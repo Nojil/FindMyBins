@@ -18,6 +18,26 @@ The iOS, Android, and web clients are one Expo codebase (`apps/app`). The app al
 
 **Every native module this app uses ships inside Expo Go for SDK 57** — camera, sqlite, secure-store, image-picker, image-manipulator, network, linear-gradient, web-browser, linking. So start with Expo Go; you only need a build for deep links and store submission.
 
+## Heads-up: Expo Go must match the SDK
+
+Expo Go supports **only one SDK at a time** — whichever it shipped with. This
+project is **SDK 57**, so an Expo Go reporting a client version like `54.x`
+will refuse to open it with *"Project is incompatible with this version of
+Expo Go."*
+
+The Play Store sometimes serves an older Expo Go (rollout lag, or the device's
+Android version is below the newer build's minimum). Fix it by installing the
+SDK-matched build directly:
+
+- **https://expo.dev/go?sdkVersion=57&platform=android&device=true** — download
+  and sideload the APK (allow "install unknown apps" for your browser).
+- iOS can only install Expo Go from the App Store, so if that one lags, use a
+  development build instead.
+
+If the sideloaded APK refuses to install, the phone's Android version is below
+what SDK 57's Expo Go requires — go to the development build below, which is
+built against your own `minSdkVersion` and has no such constraint.
+
 ## Option 1 — Expo Go (start here)
 
 1. Install **Expo Go** from the App Store / Play Store.
@@ -45,14 +65,23 @@ Good for layout, navigation, and offline behaviour. **Not** good for scan testin
 
 ## Option 3 — Development build (for deep links / store prep)
 
+`eas.json` is already committed with `development`, `preview`, and
+`production` profiles, so this is:
+
 ```bash
 npm install -g eas-cli
-eas login
-eas build:configure
-eas build --profile development --platform ios      # or android
+eas login                 # free account
+eas init                  # links the project, writes the EAS project id
+eas build --profile development --platform android   # or ios
 ```
 
-Install the resulting build on the device, then `npm run app` connects to it like Expo Go. This is what you need to test `findmybins://` links, universal links, and later IAP.
+The Android development profile produces an installable **APK**. Install it,
+then `npm run app` connects to it exactly like Expo Go.
+
+A development build is the right answer whenever Expo Go can't work: an SDK
+mismatch it can't resolve, an older Android release, `findmybins://` links,
+universal links, or (later) in-app purchases. It is also closer to what ships,
+so it is worth doing before launch regardless.
 
 ## What to actually exercise on device
 
