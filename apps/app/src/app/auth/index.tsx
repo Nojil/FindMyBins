@@ -13,7 +13,7 @@ import { WEB_APP_URL, type OAuthProvider } from "@findmybins/core";
 import { ApiError } from "@findmybins/api-client";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
-import { radius, spacing, useTheme } from "../../lib/theme";
+import { elevation, radius, spacing, useTheme } from "../../lib/theme";
 import { Button, Screen, Subtitle, TextField, Title } from "../../ui";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -78,11 +78,17 @@ export default function SignIn() {
   }) => (
     <Pressable
       onPress={() => socialSignIn(provider)}
-      style={({ pressed }) => [{
-        minHeight: 48, borderRadius: radius.lg, borderWidth: 1.5, borderColor: t.border,
-        backgroundColor: t.card, alignItems: "center", justifyContent: "center",
-        flexDirection: "row", marginVertical: spacing.xs,
-      }, pressed && { opacity: 0.8 }]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        {
+          minHeight: 50, borderRadius: radius.button, backgroundColor: t.card,
+          alignItems: "center", justifyContent: "center", flexDirection: "row",
+          marginVertical: spacing.xs,
+        },
+        elevation(t).card,
+        pressed && { opacity: 0.8 },
+      ]}
     >
       <Ionicons name={icon} size={19} color={t.text} style={{ marginRight: 8 }} />
       <Text style={{ color: t.text, fontSize: 16, fontWeight: "600" }}>{label}</Text>

@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   section: { fontSize: 17, fontWeight: "700", marginTop: spacing.lg, marginBottom: spacing.sm },
   card: { borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm },
   button: {
-    minHeight: 48, borderRadius: radius.lg, alignItems: "center", justifyContent: "center",
+    minHeight: 50, borderRadius: radius.button, alignItems: "center", justifyContent: "center",
     paddingHorizontal: spacing.lg, marginVertical: spacing.xs,
   },
   buttonRow: { flexDirection: "row", alignItems: "center" },

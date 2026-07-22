@@ -67,7 +67,7 @@ export default function Home() {
         style={[
           {
             flexDirection: "row", alignItems: "center", backgroundColor: t.card,
-            borderRadius: radius.lg, paddingHorizontal: 16, paddingVertical: 15,
+            borderRadius: radius.button, paddingHorizontal: 16, paddingVertical: 15,
             marginVertical: spacing.sm,
           },
           elevation(t).card,
