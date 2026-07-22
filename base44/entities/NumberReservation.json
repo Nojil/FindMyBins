@@ -1,0 +1,14 @@
+{
+  "name": "NumberReservation",
+  "type": "object",
+  "title": "Container Number Reservation",
+  "description": "Append-only reservation of a workspace-wide container number. Records are never deleted, which permanently retires numbers of archived and purged containers. Collision resolution: lowest record id wins, loser retries.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "number": { "type": "integer", "minimum": 1 },
+    "container_id": { "type": "string" },
+    "reason": { "type": "string", "enum": ["create", "renumber", "import"], "default": "create" }
+  },
+  "required": ["workspace_id", "number"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

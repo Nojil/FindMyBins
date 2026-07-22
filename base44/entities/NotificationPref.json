@@ -1,0 +1,13 @@
+{
+  "name": "NotificationPref",
+  "type": "object",
+  "title": "Notification Preferences",
+  "description": "Per-user, per-workspace notification preferences. Security notifications are mandatory and not configurable. Optional reminders default off.",
+  "properties": {
+    "user_id": { "type": "string" },
+    "workspace_id": { "type": "string" },
+    "prefs": { "type": "object" }
+  },
+  "required": ["user_id", "workspace_id"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "title": "Notification",
+  "description": "In-app notification record; push/email delivery tracked in channels_sent. Content never includes inventory secrets beyond what the recipient is authorized to see.",
+  "properties": {
+    "user_id": { "type": "string" },
+    "workspace_id": { "type": "string" },
+    "kind": { "type": "string" },
+    "title": { "type": "string" },
+    "body": { "type": "string" },
+    "data": { "type": "object" },
+    "read_at": { "type": "string", "format": "date-time" },
+    "channels_sent": { "type": "array", "items": { "type": "string", "enum": ["in_app", "push", "email"] }, "default": ["in_app"] }
+  },
+  "required": ["user_id", "kind", "title"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

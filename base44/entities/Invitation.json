@@ -1,0 +1,23 @@
+{
+  "name": "Invitation",
+  "type": "object",
+  "title": "Invitation",
+  "description": "Workspace invitation. Only the SHA-256 hash of the token is stored; raw tokens exist solely in the delivered link/code.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "token_hash": { "type": "string" },
+    "kind": { "type": "string", "enum": ["email", "link", "code"] },
+    "invited_email": { "type": "string", "format": "email" },
+    "invite_role": { "type": "string", "enum": ["admin", "manager", "contributor", "viewer", "billing_admin"] },
+    "location_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "max_uses": { "type": "integer", "minimum": 1, "default": 1 },
+    "use_count": { "type": "integer", "minimum": 0, "default": 0 },
+    "domain_restriction": { "type": "string" },
+    "requires_approval": { "type": "boolean", "default": false },
+    "revoked": { "type": "boolean", "default": false },
+    "created_by_user_id": { "type": "string" }
+  },
+  "required": ["workspace_id", "token_hash", "kind", "invite_role", "expires_at"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

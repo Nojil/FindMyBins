@@ -1,0 +1,27 @@
+{
+  "name": "CustomFieldDef",
+  "type": "object",
+  "title": "Custom Field Definition",
+  "description": "Paid-plan custom field for containers or items. Archiving a definition preserves existing values on records.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "scope": { "type": "string", "enum": ["container", "item"] },
+    "field_key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$" },
+    "label": { "type": "string", "maxLength": 120 },
+    "helper_text": { "type": "string" },
+    "field_type": {
+      "type": "string",
+      "enum": ["short_text", "long_text", "number", "currency", "date", "boolean", "single_select", "multi_select", "url", "email"]
+    },
+    "required_field": { "type": "boolean", "default": false },
+    "location_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "default_value": { "type": "string" },
+    "choices": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "searchable": { "type": "boolean", "default": true },
+    "include_in_reports": { "type": "boolean", "default": true },
+    "include_in_exports": { "type": "boolean", "default": true },
+    "archived": { "type": "boolean", "default": false }
+  },
+  "required": ["workspace_id", "scope", "field_key", "label", "field_type"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

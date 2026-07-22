@@ -1,0 +1,15 @@
+{
+  "name": "SearchHistory",
+  "type": "object",
+  "title": "Search History",
+  "description": "Private per-user search history. Readable only by its author via the API layer; admins can never access another user's entries. Saved only when the user's preference allows.",
+  "properties": {
+    "user_id": { "type": "string" },
+    "workspace_id": { "type": "string" },
+    "query_text": { "type": "string" },
+    "kind": { "type": "string", "enum": ["keyword", "natural"], "default": "keyword" },
+    "expires_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["user_id", "workspace_id", "query_text"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

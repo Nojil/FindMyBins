@@ -1,0 +1,19 @@
+{
+  "name": "ActivityEvent",
+  "type": "object",
+  "title": "Activity Event",
+  "description": "Audit log entry. Never contains search query text or inventory secrets. critical=true events (security, ownership, permission, subscription, permanent deletion) are exempt from retention pruning.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "actor_user_id": { "type": "string" },
+    "actor_email": { "type": "string" },
+    "action": { "type": "string" },
+    "target_type": { "type": "string" },
+    "target_id": { "type": "string" },
+    "target_label": { "type": "string" },
+    "metadata": { "type": "object" },
+    "critical": { "type": "boolean", "default": false }
+  },
+  "required": ["workspace_id", "action"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

@@ -1,0 +1,11 @@
+// Base44 Project Configuration
+{
+  "name": "FindMyBins",
+
+  "visibility": "public",
+
+  // Web build of the universal Expo app (apps/app), exported with `npm run web:export`.
+  "site": {
+    "outputDirectory": "./apps/app/dist"
+  }
+}

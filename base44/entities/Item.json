@@ -1,0 +1,156 @@
+{
+  "name": "Item",
+  "type": "object",
+  "title": "Item",
+  "description": "An individual item record inside a container. location_id is denormalized from the container and updated on moves. Missing quantity means 'not specified', never 1. AI-originated records stay state=draft until explicitly confirmed.",
+  "properties": {
+    "workspace_id": {
+      "type": "string"
+    },
+    "container_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "quantity": {
+      "type": "number",
+      "minimum": 0
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "notes": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "confirmed"
+      ],
+      "default": "confirmed"
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "quicklist",
+        "photo_ai",
+        "voice",
+        "barcode",
+        "import"
+      ],
+      "default": "manual"
+    },
+    "ai_confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ]
+    },
+    "capture_session_id": {
+      "type": "string"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "purge_after": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "condition": {
+      "type": "string"
+    },
+    "purchase_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "purchase_price": {
+      "type": "number"
+    },
+    "estimated_value": {
+      "type": "number"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "warranty_expires": {
+      "type": "string",
+      "format": "date"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "internal_ref": {
+      "type": "string"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "barcode": {
+      "type": "string"
+    },
+    "custom": {
+      "type": "object"
+    },
+    "search_text": {
+      "type": "string"
+    },
+    "client_uuid": {
+      "type": "string"
+    },
+    "updated_by_user_id": {
+      "type": "string"
+    },
+    "import_job_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "container_id",
+    "name"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

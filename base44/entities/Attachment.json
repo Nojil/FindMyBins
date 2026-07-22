@@ -1,0 +1,36 @@
+{
+  "name": "Attachment",
+  "type": "object",
+  "title": "Attachment",
+  "description": "Document attached to a container or item (PDF, Word, Excel, CSV, text, images). Private storage only; signed URLs issued per authorized request so link access dies with permission removal. Video is not supported.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "owner_type": { "type": "string", "enum": ["container", "item"] },
+    "owner_id": { "type": "string" },
+    "file_uri": { "type": "string" },
+    "file_name": { "type": "string", "maxLength": 255 },
+    "content_type": { "type": "string" },
+    "bytes": { "type": "integer", "minimum": 0, "default": 0 },
+    "description": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1, "default": 1 },
+    "previous_versions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file_uri": { "type": "string" },
+          "version": { "type": "integer" },
+          "bytes": { "type": "integer" },
+          "replaced_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "default": []
+    },
+    "archived": { "type": "boolean", "default": false },
+    "deleted_at": { "type": "string", "format": "date-time" },
+    "purge_after": { "type": "string", "format": "date-time" },
+    "uploaded_by_user_id": { "type": "string" }
+  },
+  "required": ["workspace_id", "owner_type", "owner_id", "file_uri", "file_name"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

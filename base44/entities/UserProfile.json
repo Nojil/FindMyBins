@@ -1,0 +1,24 @@
+{
+  "name": "UserProfile",
+  "type": "object",
+  "title": "User Profile",
+  "description": "Per-account settings and legal attestations. One record per user; all access via backend functions.",
+  "properties": {
+    "user_id": { "type": "string" },
+    "display_name": { "type": "string", "maxLength": 120 },
+    "theme": { "type": "string", "enum": ["system", "light", "dark"], "default": "system" },
+    "age_confirmed_at": { "type": "string", "format": "date-time" },
+    "is_18_or_over": { "type": "boolean" },
+    "terms_accepted_at": { "type": "string", "format": "date-time" },
+    "terms_version": { "type": "string" },
+    "default_workspace_id": { "type": "string" },
+    "search_history_enabled": { "type": "boolean", "default": true },
+    "search_history_expiry_days": { "type": "integer", "minimum": 0, "default": 0 },
+    "analytics_opt_out": { "type": "boolean", "default": false },
+    "trial_used_household": { "type": "boolean", "default": false },
+    "trial_used_business": { "type": "boolean", "default": false },
+    "label_prefs": { "type": "object" }
+  },
+  "required": ["user_id"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

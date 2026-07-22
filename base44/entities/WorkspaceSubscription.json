@@ -1,0 +1,142 @@
+{
+  "name": "WorkspaceSubscription",
+  "type": "object",
+  "title": "Workspace Subscription",
+  "description": "Entitlement source of truth, one per workspace. Trials are internal state (no card). Stripe fields sync via the signature-verified webhook function only. Downgrades never delete data; over_limit pauses creation and premium features.",
+  "properties": {
+    "workspace_id": {
+      "type": "string"
+    },
+    "plan": {
+      "type": "string",
+      "enum": [
+        "free",
+        "household",
+        "business"
+      ],
+      "default": "free"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "trialing",
+        "past_due",
+        "canceled"
+      ],
+      "default": "active"
+    },
+    "trial_type": {
+      "type": "string",
+      "enum": [
+        "household",
+        "business"
+      ]
+    },
+    "trial_ends_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "billing_interval": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "annual"
+      ]
+    },
+    "current_period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "seats_included": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 2
+    },
+    "seats_extra": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "stripe_customer_id": {
+      "type": "string"
+    },
+    "stripe_subscription_id": {
+      "type": "string"
+    },
+    "storage_bytes_used": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "ai_trial_actions_used": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "ai_hour_bucket": {
+      "type": "string"
+    },
+    "ai_hour_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "over_limit": {
+      "type": "boolean",
+      "default": false
+    },
+    "storage_warning_sent": {
+      "type": "integer",
+      "enum": [
+        0,
+        80,
+        90,
+        100
+      ],
+      "default": 0
+    },
+    "payment_provider": {
+      "type": "string",
+      "enum": [
+        "stripe",
+        "apple",
+        "google"
+      ]
+    },
+    "iap_product_id": {
+      "type": "string"
+    },
+    "iap_original_transaction_id": {
+      "type": "string"
+    },
+    "iap_purchase_token": {
+      "type": "string"
+    },
+    "iap_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancel_at_period_end": {
+      "type": "boolean",
+      "default": false
+    },
+    "trial_reminders_sent": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "workspace_id",
+    "plan"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

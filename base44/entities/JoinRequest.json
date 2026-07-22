@@ -1,0 +1,17 @@
+{
+  "name": "JoinRequest",
+  "type": "object",
+  "title": "Join Request",
+  "description": "Pending membership request created when an invitation requires admin approval.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "invitation_id": { "type": "string" },
+    "user_id": { "type": "string" },
+    "user_email": { "type": "string", "format": "email" },
+    "status": { "type": "string", "enum": ["pending", "approved", "denied"], "default": "pending" },
+    "decided_by_user_id": { "type": "string" },
+    "decided_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["workspace_id", "invitation_id", "user_id"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "LocationGrant",
+  "type": "object",
+  "title": "Location Grant",
+  "description": "Per-location role for a member in Business/Organization workspaces. Inherited by all descendant locations, containers, items, media, and reports.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "member_id": { "type": "string" },
+    "location_id": { "type": "string" },
+    "grant_role": { "type": "string", "enum": ["manager", "contributor", "viewer"] }
+  },
+  "required": ["workspace_id", "member_id", "location_id", "grant_role"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

@@ -1,0 +1,124 @@
+{
+  "name": "Container",
+  "type": "object",
+  "title": "Storage Container",
+  "description": "One model for every container type. qr_token is permanent and unguessable; number is the workspace-wide display number and is never the QR secret. Containers can never contain other containers.",
+  "properties": {
+    "workspace_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "number_display": {
+      "type": "string"
+    },
+    "pending_number": {
+      "type": "boolean",
+      "default": false
+    },
+    "qr_token": {
+      "type": "string"
+    },
+    "container_type": {
+      "type": "string",
+      "enum": [
+        "bin",
+        "tote",
+        "box",
+        "crate",
+        "bag",
+        "drawer",
+        "cabinet",
+        "trunk",
+        "case",
+        "bucket",
+        "file_box",
+        "custom"
+      ],
+      "default": "bin"
+    },
+    "custom_type_label": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "size_capacity": {
+      "type": "string"
+    },
+    "container_color": {
+      "type": "string"
+    },
+    "lid_color": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "label_status": {
+      "type": "string",
+      "enum": [
+        "not_printed",
+        "queued",
+        "printed"
+      ],
+      "default": "not_printed"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "archived_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "custom": {
+      "type": "object"
+    },
+    "search_text": {
+      "type": "string"
+    },
+    "client_uuid": {
+      "type": "string"
+    },
+    "updated_by_user_id": {
+      "type": "string"
+    },
+    "import_job_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "location_id",
+    "qr_token",
+    "container_type",
+    "title"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

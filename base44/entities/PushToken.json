@@ -1,0 +1,15 @@
+{
+  "name": "PushToken",
+  "type": "object",
+  "title": "Push Token",
+  "description": "Expo push token for a user's device. Removed on sign-out or when the push service reports the token dead.",
+  "properties": {
+    "user_id": { "type": "string" },
+    "token": { "type": "string" },
+    "platform": { "type": "string", "enum": ["ios", "android"] },
+    "device_name": { "type": "string" },
+    "last_seen_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["user_id", "token", "platform"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

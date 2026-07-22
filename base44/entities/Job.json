@@ -1,0 +1,25 @@
+{
+  "name": "Job",
+  "type": "object",
+  "title": "Background Job",
+  "description": "Chunked long-running work (CSV import/export, PDF reports, purges, import undo) processed incrementally to stay under the 5-minute function limit. Result files are private; access via authorized signed URLs.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "kind": { "type": "string", "enum": ["import", "import_undo", "export", "report", "purge"] },
+    "status": { "type": "string", "enum": ["pending", "running", "done", "failed", "undone"], "default": "pending" },
+    "params": { "type": "object" },
+    "progress": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer" },
+        "processed": { "type": "integer" },
+        "cursor": { "type": "string" }
+      }
+    },
+    "result": { "type": "object" },
+    "error_code": { "type": "string" },
+    "created_by_user_id": { "type": "string" }
+  },
+  "required": ["workspace_id", "kind"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

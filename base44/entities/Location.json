@@ -1,0 +1,53 @@
+{
+  "name": "Location",
+  "type": "object",
+  "title": "Storage Location",
+  "description": "Flexible hierarchical location node (property > area > shelf > ...). Any depth; cycle prevention and path denormalization maintained by backend functions.",
+  "properties": {
+    "workspace_id": {
+      "type": "string"
+    },
+    "parent_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 120
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "path_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "path_text": {
+      "type": "string"
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 0
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "import_job_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "name"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

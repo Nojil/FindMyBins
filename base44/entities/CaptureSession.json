@@ -1,0 +1,23 @@
+{
+  "name": "CaptureSession",
+  "type": "object",
+  "title": "Capture Session",
+  "description": "One AI photo / voice / barcode capture session producing draft items. Voice audio is deleted immediately after successful transcription (audio_deleted_at); failed audio expires at expires_at.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "container_id": { "type": "string" },
+    "kind": { "type": "string", "enum": ["photo_ai", "voice", "barcode"] },
+    "status": { "type": "string", "enum": ["pending", "processing", "ready", "failed", "expired"], "default": "pending" },
+    "transcript": { "type": "string" },
+    "audio_file_uri": { "type": "string" },
+    "audio_deleted_at": { "type": "string", "format": "date-time" },
+    "media_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "barcode_value": { "type": "string" },
+    "barcode_format": { "type": "string", "enum": ["upc", "ean", "isbn"] },
+    "draft_item_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "error_code": { "type": "string" },
+    "expires_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["workspace_id", "kind"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

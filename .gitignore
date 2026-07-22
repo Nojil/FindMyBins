@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.expo/
+*.log
+.DS_Store
+.env
+.env.*
+
+# Base44 app link contains the app ID — never commit
+base44/.app.jsonc

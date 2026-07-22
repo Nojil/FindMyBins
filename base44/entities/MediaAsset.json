@@ -1,0 +1,30 @@
+{
+  "name": "MediaAsset",
+  "type": "object",
+  "title": "Media Asset",
+  "description": "Photo stored as private-file variants. Access only via short-lived signed URLs issued by an authorizing function. Deleted assets stay recoverable until purge_after and count toward storage.",
+  "properties": {
+    "workspace_id": { "type": "string" },
+    "owner_type": { "type": "string", "enum": ["container", "item", "workspace_logo", "capture_session"] },
+    "owner_id": { "type": "string" },
+    "file_uris": {
+      "type": "object",
+      "properties": {
+        "thumb": { "type": "string" },
+        "medium": { "type": "string" },
+        "full": { "type": "string" },
+        "original": { "type": "string" }
+      }
+    },
+    "content_type": { "type": "string" },
+    "bytes_total": { "type": "integer", "minimum": 0, "default": 0 },
+    "original_retained": { "type": "boolean", "default": false },
+    "upload_state": { "type": "string", "enum": ["pending", "uploaded", "failed"], "default": "pending" },
+    "deleted_at": { "type": "string", "format": "date-time" },
+    "purge_after": { "type": "string", "format": "date-time" },
+    "client_uuid": { "type": "string" },
+    "uploaded_by_user_id": { "type": "string" }
+  },
+  "required": ["workspace_id", "owner_type", "owner_id"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

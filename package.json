@@ -1,0 +1,24 @@
+{
+  "name": "findmybins",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FindMyBins — Scan It. Store It. Find It.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "app": "npm run start --workspace @findmybins/app",
+    "web": "npm run web --workspace @findmybins/app",
+    "web:export": "npm run export:web --workspace @findmybins/app",
+    "web:deploy": "npm run web:export && npx base44 site deploy --yes",
+    "typecheck": "npm run typecheck --workspace @findmybins/app",
+    "backend:dev": "npx base44 dev",
+    "backend:deploy": "npx base44 deploy",
+    "entities:push": "npx base44 entities push",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

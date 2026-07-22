@@ -1,0 +1,7 @@
+{
+  "name": "User",
+  "type": "object",
+  "title": "User",
+  "description": "Built-in Base44 user entity. App-level user settings live in UserProfile; no custom fields are added here so authorization never depends on client-writable user data.",
+  "properties": {}
+}

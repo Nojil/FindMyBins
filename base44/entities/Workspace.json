@@ -1,0 +1,41 @@
+{
+  "name": "Workspace",
+  "type": "object",
+  "title": "Workspace",
+  "description": "Top-level tenant. Exactly one owner (enforced in backend functions). Settings hold offline policy, branding, and custom container types.",
+  "properties": {
+    "name": { "type": "string", "maxLength": 120 },
+    "workspace_type": { "type": "string", "enum": ["household", "business", "organization"] },
+    "owner_user_id": { "type": "string" },
+    "status": { "type": "string", "enum": ["active", "pending_deletion"], "default": "active" },
+    "deletion_requested_at": { "type": "string", "format": "date-time" },
+    "deletion_effective_at": { "type": "string", "format": "date-time" },
+    "templates_applied": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "custom_container_types": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "categories": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "advanced_details_enabled": { "type": "boolean", "default": false },
+        "mfa_required": { "type": "boolean", "default": false },
+        "retain_original_photos": { "type": "boolean", "default": false },
+        "branding_accent_color": { "type": "string" },
+        "branding_logo_media_id": { "type": "string" },
+        "offline": {
+          "type": "object",
+          "properties": {
+            "mode": { "type": "string", "enum": ["disabled", "daily", "7_days", "30_days", "custom"] },
+            "custom_revalidate_days": { "type": "integer", "minimum": 1 },
+            "photos_enabled": { "type": "boolean", "default": true },
+            "edits_enabled": { "type": "boolean", "default": true },
+            "biometric_required": { "type": "boolean", "default": false },
+            "restricted_roles": { "type": "array", "items": { "type": "string" }, "default": [] },
+            "restricted_location_ids": { "type": "array", "items": { "type": "string" }, "default": [] }
+          }
+        }
+      }
+    }
+  },
+  "required": ["name", "workspace_type", "owner_user_id"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}
