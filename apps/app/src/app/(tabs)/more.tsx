@@ -1,16 +1,24 @@
-// More: workspace switcher, print queue, account, sign out.
+// More: workspace switcher, appearance, workspace tools, billing, account.
 
 import React, { useCallback, useState } from "react";
 import { Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
-import { spacing, useTheme } from "../../lib/theme";
-import { Badge, Button, Card, Screen, SectionTitle, Title } from "../../ui";
+import { spacing, useTheme, useThemeMode, type ThemeMode } from "../../lib/theme";
+import {
+  Badge, Button, Card, ListRow, Screen, SectionTitle, SegmentedControl, Subtitle, Title,
+} from "../../ui";
+
+const APPEARANCE_OPTIONS: Array<{ value: ThemeMode; label: string; icon: "phone-portrait-outline" | "sunny-outline" | "moon-outline" }> = [
+  { value: "system", label: "System", icon: "phone-portrait-outline" },
+  { value: "light", label: "Light", icon: "sunny-outline" },
+  { value: "dark", label: "Dark", icon: "moon-outline" },
+];
 
 export default function More() {
   const t = useTheme();
+  const { mode, resolved, setMode } = useThemeMode();
   const { profile, workspace, workspaces, selectWorkspace, signOut } = useSession();
   const [queueCount, setQueueCount] = useState<number | null>(null);
 
@@ -24,68 +32,67 @@ export default function More() {
     })();
   }, [workspace?.id]));
 
+  const canBill = workspace?.my_role === "owner" || workspace?.my_role === "billing_admin";
+
   return (
     <Screen>
       <Title>More</Title>
 
+      <SectionTitle>Appearance</SectionTitle>
+      <SegmentedControl
+        label="Appearance"
+        options={APPEARANCE_OPTIONS}
+        value={mode}
+        onChange={setMode}
+      />
+      <Text style={{ color: t.textMuted, fontSize: 12, marginBottom: spacing.sm }}>
+        {mode === "system"
+          ? `Following your device — currently ${resolved}.`
+          : `Always ${mode}, on every device you sign in to.`}
+      </Text>
+
       <SectionTitle>Workspaces</SectionTitle>
       {workspaces.map((w) => (
-        <Card key={w.id} onPress={() => selectWorkspace(w.id)}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Ionicons
-              name={w.workspace_type === "household" ? "home-outline" : "business-outline"}
-              size={20}
-              color={w.id === workspace?.id ? t.primary : t.textMuted}
-            />
-            <View style={{ flex: 1, marginLeft: spacing.sm }}>
-              <Text style={{ color: t.text, fontSize: 15, fontWeight: "600" }}>{w.name}</Text>
-              <Text style={{ color: t.textMuted, fontSize: 12 }}>
-                {w.workspace_type} · {w.my_role} · {w.plan}
-              </Text>
-            </View>
-            {w.id === workspace?.id && <Ionicons name="checkmark-circle" size={20} color={t.primary} />}
-          </View>
-        </Card>
+        <ListRow
+          key={w.id}
+          icon={w.workspace_type === "household" ? "home-outline" : "business-outline"}
+          label={w.name}
+          description={`${w.workspace_type} · ${w.my_role} · ${w.plan}`}
+          selected={w.id === workspace?.id}
+          onPress={() => selectWorkspace(w.id)}
+        />
       ))}
 
       <SectionTitle>Workspace</SectionTitle>
-      <Card onPress={() => router.push("/workspace-settings")}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="settings-outline" size={20} color={t.accent} />
-          <Text style={{ color: t.text, fontSize: 15, marginLeft: spacing.sm, flex: 1 }}>
-            Settings, members & activity
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color={t.textMuted} />
-        </View>
-      </Card>
-      <Card onPress={() => router.push("/recovery")}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="trash-outline" size={20} color={t.accent} />
-          <Text style={{ color: t.text, fontSize: 15, marginLeft: spacing.sm, flex: 1 }}>Recently deleted</Text>
-          <Ionicons name="chevron-forward" size={18} color={t.textMuted} />
-        </View>
-      </Card>
+      <ListRow
+        icon="settings-outline"
+        label="Settings, members & activity"
+        onPress={() => router.push("/workspace-settings")}
+      />
+      <ListRow
+        icon="trash-outline"
+        label="Recently deleted"
+        description="Restore items and files for 30 days"
+        onPress={() => router.push("/recovery")}
+      />
+      <ListRow
+        icon="print-outline"
+        label="Print queue"
+        description="Labels waiting to be printed"
+        trailing={queueCount != null
+          ? <Badge label={String(queueCount)} tone={queueCount > 0 ? "warn" : "neutral"} />
+          : undefined}
+      />
 
-      <SectionTitle>Labels</SectionTitle>
-      <Card>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <Ionicons name="print-outline" size={20} color={t.accent} />
-          <Text style={{ color: t.text, fontSize: 15, marginLeft: spacing.sm, flex: 1 }}>Print queue</Text>
-          {queueCount != null && <Badge label={String(queueCount)} tone={queueCount > 0 ? "warn" : "neutral"} />}
-        </View>
-      </Card>
-
-      {(workspace?.my_role === "owner" || workspace?.my_role === "billing_admin") && (
+      {canBill && (
         <>
           <SectionTitle>Billing</SectionTitle>
-          <Card onPress={() => router.push("/billing")}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Ionicons name="card-outline" size={20} color={t.accent} />
-              <Text style={{ color: t.text, fontSize: 15, marginLeft: spacing.sm, flex: 1 }}>Plan & billing</Text>
-              <Badge label={(workspace?.plan ?? "free").toUpperCase()} tone="accent" />
-              <Ionicons name="chevron-forward" size={18} color={t.textMuted} style={{ marginLeft: 6 }} />
-            </View>
-          </Card>
+          <ListRow
+            icon="card-outline"
+            label="Plan & billing"
+            trailing={<Badge label={(workspace?.plan ?? "free").toUpperCase()} tone="accent" />}
+            onPress={() => router.push("/billing")}
+          />
         </>
       )}
 
@@ -94,9 +101,9 @@ export default function More() {
         <Text style={{ color: t.text, fontSize: 15, fontWeight: "600" }}>
           {profile?.display_name || "Your account"}
         </Text>
-        <Text style={{ color: t.textMuted, fontSize: 13, marginTop: 2 }}>
-          Theme follows your device setting.
-        </Text>
+        <Subtitle>
+          Search history is private to you and never visible to workspace admins.
+        </Subtitle>
       </Card>
 
       <View style={{ marginTop: spacing.lg }}>

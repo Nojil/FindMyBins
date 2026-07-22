@@ -155,11 +155,114 @@ export function ErrorView({ message, onRetry }: { message: string; onRetry?: () 
 
 export function Badge({ label, tone = "neutral" }: { label: string; tone?: "neutral" | "accent" | "warn" }) {
   const t = useTheme();
-  const bg = tone === "accent" ? `${t.accent}22` : tone === "warn" ? "#F59E0B22" : `${t.textMuted}1A`;
-  const fg = tone === "accent" ? t.accent : tone === "warn" ? "#B45309" : t.textMuted;
+  // Theme tokens rather than fixed hex, so warnings stay legible on dark cards.
+  const bg = tone === "accent" ? `${t.accent}22` : tone === "warn" ? `${t.warning}26` : `${t.textMuted}1A`;
+  const fg = tone === "accent" ? t.accent : tone === "warn" ? t.warning : t.textMuted;
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
       <Text style={{ color: fg, fontSize: 12, fontWeight: "600" }}>{label}</Text>
+    </View>
+  );
+}
+
+/**
+ * Standard settings/navigation row: icon, label, optional value or trailing
+ * node, and a chevron when it navigates. Replaces the card+row boilerplate
+ * that was repeated across the settings screens.
+ */
+export function ListRow({ icon, label, description, value, trailing, onPress, selected, tone = "accent", last }: {
+  icon?: keyof typeof Ionicons.glyphMap;
+  label: string;
+  description?: string;
+  value?: string;
+  trailing?: React.ReactNode;
+  onPress?: () => void;
+  selected?: boolean;
+  tone?: "accent" | "muted" | "danger";
+  last?: boolean;
+}) {
+  const t = useTheme();
+  const iconColor = tone === "danger" ? t.danger : tone === "muted" ? t.textMuted : t.accent;
+  const body = (
+    <View style={styles.row}>
+      {icon ? <Ionicons name={icon} size={20} color={selected ? t.primary : iconColor} /> : null}
+      <View style={{ flex: 1, marginLeft: icon ? spacing.sm : 0 }}>
+        <Text style={{ color: tone === "danger" ? t.danger : t.text, fontSize: 15, fontWeight: "600" }}>
+          {label}
+        </Text>
+        {description ? (
+          <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 2 }}>{description}</Text>
+        ) : null}
+      </View>
+      {value ? <Text style={{ color: t.textMuted, fontSize: 14, marginRight: 6 }}>{value}</Text> : null}
+      {trailing}
+      {selected ? <Ionicons name="checkmark-circle" size={20} color={t.primary} /> : null}
+      {onPress && !selected ? (
+        <Ionicons name="chevron-forward" size={18} color={t.textMuted} style={{ marginLeft: 6 }} />
+      ) : null}
+    </View>
+  );
+  const frame: StyleProp<ViewStyle> = [
+    styles.listRow,
+    { backgroundColor: t.card, borderColor: t.border },
+    last === false && { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  ];
+  if (!onPress) return <View style={frame}>{body}</View>;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={description}
+      accessibilityState={{ selected: !!selected }}
+      style={({ pressed }) => [frame, pressed && { opacity: 0.85 }]}
+    >
+      {body}
+    </Pressable>
+  );
+}
+
+/** Accessible segmented picker — used for the appearance and interval choices. */
+export function SegmentedControl<T extends string>({ options, value, onChange, label }: {
+  options: Array<{ value: T; label: string; icon?: keyof typeof Ionicons.glyphMap }>;
+  value: T;
+  onChange: (value: T) => void;
+  label?: string;
+}) {
+  const t = useTheme();
+  return (
+    <View accessibilityRole="radiogroup" accessibilityLabel={label}>
+      <View style={[styles.segment, { backgroundColor: t.elevated, borderColor: t.border }]}>
+        {options.map((opt) => {
+          const active = opt.value === value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => onChange(opt.value)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={opt.label}
+              style={({ pressed }) => [
+                styles.segmentItem,
+                active && { backgroundColor: t.card, borderColor: t.primary, borderWidth: 1.5 },
+                pressed && { opacity: 0.85 },
+              ]}
+            >
+              {opt.icon ? (
+                <Ionicons
+                  name={opt.icon}
+                  size={16}
+                  color={active ? t.primary : t.textMuted}
+                  style={{ marginRight: 6 }}
+                />
+              ) : null}
+              <Text style={{ color: active ? t.primary : t.textMuted, fontWeight: "600", fontSize: 14 }}>
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -178,7 +281,7 @@ export function SyncPill({ online, syncing, pendingCount, conflictCount, onPress
     : !online ? "cloud-offline-outline"
     : pendingCount > 0 ? "cloud-upload-outline"
     : "cloud-done-outline";
-  const color = conflictCount > 0 ? "#B45309" : !online ? t.textMuted : t.accent;
+  const color = conflictCount > 0 ? t.warning : !online ? t.textMuted : t.accent;
   return (
     <Pressable
       onPress={onPress}
@@ -217,4 +320,18 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 17, fontWeight: "700", marginTop: spacing.sm, textAlign: "center" },
   emptyBody: { fontSize: 14, marginTop: 6, textAlign: "center", lineHeight: 20 },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start" },
+  row: { flexDirection: "row", alignItems: "center", minHeight: 28 },
+  listRow: {
+    borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: 14,
+    marginBottom: spacing.sm,
+  },
+  segment: {
+    flexDirection: "row", borderRadius: radius.md, borderWidth: 1, padding: 4, gap: 4,
+    marginBottom: spacing.sm,
+  },
+  segmentItem: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: "transparent",
+    minHeight: 44,
+  },
 });
