@@ -6,8 +6,9 @@ import {
   type StyleProp, type TextInputProps, type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { radius, spacing, useTheme } from "../lib/theme";
+import { elevation, radius, spacing, useTheme } from "../lib/theme";
 
 export function Screen({ children, scroll = true, padded = true, style }: {
   children: React.ReactNode; scroll?: boolean; padded?: boolean; style?: StyleProp<ViewStyle>;
@@ -19,21 +20,29 @@ export function Screen({ children, scroll = true, padded = true, style }: {
     { maxWidth: 720, width: "100%" as const, alignSelf: "center" as const },
     style,
   ];
+  // Vertical top-to-bottom gradient is the base surface for every screen.
+  const gradient = (
+    <LinearGradient colors={[...t.bgGradient]} style={StyleSheet.absoluteFill} />
+  );
   if (!scroll) {
     return (
       <View style={[styles.fill, { backgroundColor: t.bg, paddingTop: insets.top }]}>
+        {gradient}
         <View style={[styles.fill, ...inner]}>{children}</View>
       </View>
     );
   }
   return (
-    <ScrollView
-      style={[styles.fill, { backgroundColor: t.bg }]}
-      contentContainerStyle={[{ paddingTop: insets.top }, ...inner]}
-      keyboardShouldPersistTaps="handled"
-    >
-      {children}
-    </ScrollView>
+    <View style={[styles.fill, { backgroundColor: t.bg }]}>
+      {gradient}
+      <ScrollView
+        style={styles.fill}
+        contentContainerStyle={[{ paddingTop: insets.top }, ...inner]}
+        keyboardShouldPersistTaps="handled"
+      >
+        {children}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -56,7 +65,8 @@ export function Card({ children, style, onPress }: {
   children: React.ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void;
 }) {
   const t = useTheme();
-  const base = [styles.card, { backgroundColor: t.card, borderColor: t.border }, style];
+  // Elevation replaces the outline: solid fill + layered shadow.
+  const base = [styles.card, { backgroundColor: t.card }, elevation(t).card, style];
   if (onPress) {
     return (
       <Pressable onPress={onPress} style={({ pressed }) => [...base, pressed && { opacity: 0.85 }]}>
@@ -79,10 +89,17 @@ export function Button({ label, onPress, kind = "primary", disabled, loading, ic
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled || !!loading }}
       style={({ pressed }) => [
         styles.button,
         { backgroundColor: bg, borderColor, borderWidth: kind === "secondary" ? 1.5 : 0 },
-        (disabled || loading) && { opacity: 0.5 },
+        // Solid fill plus a coloured glow gives the primary action its lift;
+        // outlined/ghost buttons stay flat against the card surface.
+        kind === "primary" && elevation(t).primary,
+        kind === "secondary" && [{ backgroundColor: t.card }, elevation(t).chip],
+        (disabled || loading) && { opacity: 0.5, shadowOpacity: 0 },
         pressed && { opacity: 0.8 },
       ]}
     >
@@ -108,7 +125,8 @@ export function TextField(props: TextInputProps & { label?: string }) {
         placeholderTextColor={t.textMuted}
         style={[
           styles.input,
-          { backgroundColor: t.inputBg, borderColor: t.border, color: t.text },
+          { backgroundColor: t.inputBg, color: t.text },
+          elevation(t).card,
           rest.multiline && { minHeight: 96, textAlignVertical: "top" },
           style,
         ]}
@@ -204,7 +222,8 @@ export function ListRow({ icon, label, description, value, trailing, onPress, se
   );
   const frame: StyleProp<ViewStyle> = [
     styles.listRow,
-    { backgroundColor: t.card, borderColor: t.border },
+    { backgroundColor: t.card },
+    elevation(t).card,
     last === false && { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   ];
   if (!onPress) return <View style={frame}>{body}</View>;
@@ -232,7 +251,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
   const t = useTheme();
   return (
     <View accessibilityRole="radiogroup" accessibilityLabel={label}>
-      <View style={[styles.segment, { backgroundColor: t.elevated, borderColor: t.border }]}>
+      <View style={[styles.segment, { backgroundColor: t.elevated }]}>
         {options.map((opt) => {
           const active = opt.value === value;
           return (
@@ -286,14 +305,21 @@ export function SyncPill({ online, syncing, pendingCount, conflictCount, onPress
     <Pressable
       onPress={onPress}
       disabled={!onPress}
-      style={{
-        flexDirection: "row", alignItems: "center", alignSelf: "flex-start",
-        backgroundColor: `${color}18`, borderRadius: 999,
-        paddingHorizontal: 12, paddingVertical: 6, marginBottom: spacing.sm,
-      }}
+      accessibilityRole={onPress ? "button" : "text"}
+      accessibilityLabel={`Sync status: ${label}`}
+      style={[
+        {
+          flexDirection: "row", alignItems: "center", alignSelf: "flex-start",
+          backgroundColor: t.card, borderRadius: 999,
+          paddingHorizontal: 12, paddingVertical: 7, marginBottom: spacing.sm,
+        },
+        elevation(t).chip,
+      ]}
     >
-      <Ionicons name={icon} size={14} color={color} />
-      <Text style={{ color, fontSize: 13, fontWeight: "600", marginLeft: 6 }}>{label}</Text>
+      {/* Status dot carries the colour; the icon + text keep it non-colour-only. */}
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginRight: 7 }} />
+      <Ionicons name={icon} size={13} color={color} />
+      <Text style={{ color, fontSize: 13, fontWeight: "600", marginLeft: 5 }}>{label}</Text>
     </Pressable>
   );
 }
@@ -304,10 +330,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "700", marginBottom: spacing.xs },
   subtitle: { fontSize: 15, marginBottom: spacing.md },
   section: { fontSize: 17, fontWeight: "700", marginTop: spacing.lg, marginBottom: spacing.sm },
-  card: {
-    borderRadius: radius.md, borderWidth: 1, padding: spacing.md, marginBottom: spacing.sm,
-    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
-  },
+  card: { borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm },
   button: {
     minHeight: 48, borderRadius: radius.lg, alignItems: "center", justifyContent: "center",
     paddingHorizontal: spacing.lg, marginVertical: spacing.xs,
@@ -315,20 +338,14 @@ const styles = StyleSheet.create({
   buttonRow: { flexDirection: "row", alignItems: "center" },
   buttonLabel: { fontSize: 16, fontWeight: "600" },
   fieldLabel: { fontSize: 13, fontWeight: "600", marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
+  input: { borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 13, fontSize: 16 },
   empty: { alignItems: "center", paddingVertical: spacing.xl, paddingHorizontal: spacing.lg },
   emptyTitle: { fontSize: 17, fontWeight: "700", marginTop: spacing.sm, textAlign: "center" },
   emptyBody: { fontSize: 14, marginTop: 6, textAlign: "center", lineHeight: 20 },
   badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start" },
   row: { flexDirection: "row", alignItems: "center", minHeight: 28 },
-  listRow: {
-    borderRadius: radius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: 14,
-    marginBottom: spacing.sm,
-  },
-  segment: {
-    flexDirection: "row", borderRadius: radius.md, borderWidth: 1, padding: 4, gap: 4,
-    marginBottom: spacing.sm,
-  },
+  listRow: { borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 14, marginBottom: spacing.sm },
+  segment: { flexDirection: "row", borderRadius: radius.md, padding: 4, gap: 4, marginBottom: spacing.sm },
   segmentItem: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     paddingVertical: 10, borderRadius: radius.sm, borderWidth: 1.5, borderColor: "transparent",

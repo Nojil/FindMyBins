@@ -3,7 +3,8 @@ import { View, type ColorValue } from "react-native";
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSession } from "../../lib/session";
-import { useTheme } from "../../lib/theme";
+import { Platform } from "react-native";
+import { elevation, useTheme } from "../../lib/theme";
 import { LoadingView } from "../../ui";
 
 export default function TabsLayout() {
@@ -23,7 +24,15 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: t.primary,
         tabBarInactiveTintColor: t.textMuted,
-        tabBarStyle: { backgroundColor: t.tabBar, borderTopColor: t.border },
+        tabBarStyle: [
+          { backgroundColor: t.tabBar, borderTopColor: t.divider, borderTopWidth: 1 },
+          // Light mode lifts the bar off the content; dark relies on the
+          // charcoal background contrast instead.
+          !t.dark && Platform.OS !== "android" && {
+            shadowColor: "#101820", shadowOpacity: 0.04,
+            shadowRadius: 12, shadowOffset: { width: 0, height: -2 },
+          },
+        ],
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: icon("home") }} />
@@ -37,8 +46,7 @@ export default function TabsLayout() {
               style={{
                 width: size + 26, height: size + 26, borderRadius: (size + 26) / 2,
                 backgroundColor: t.primary, alignItems: "center", justifyContent: "center",
-                marginTop: -14, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6,
-                shadowOffset: { width: 0, height: 3 }, elevation: 4,
+                marginTop: -14, ...elevation(t).primary,
               }}
             >
               <Ionicons name="qr-code" size={size + 2} color="#FFFFFF" />

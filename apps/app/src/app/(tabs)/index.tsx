@@ -8,7 +8,7 @@ import { formatBytes, type DashboardOverview } from "@findmybins/core";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { useSync } from "../../lib/offline";
-import { radius, spacing, useTheme } from "../../lib/theme";
+import { elevation, radius, spacing, useTheme } from "../../lib/theme";
 import { Badge, Button, Card, ErrorView, LoadingView, Screen, SectionTitle, SyncPill, Title } from "../../ui";
 
 export default function Home() {
@@ -34,10 +34,17 @@ export default function Home() {
   if (error) return <ErrorView message={error} onRetry={load} />;
   if (!workspace || !data) return <LoadingView />;
 
-  const stat = (label: string, value: number | string) => (
-    <Card style={{ flex: 1, alignItems: "center", marginHorizontal: 4 }}>
-      <Text style={{ color: t.text, fontSize: 24, fontWeight: "700" }}>{value}</Text>
-      <Text style={{ color: t.textMuted, fontSize: 12, marginTop: 2 }}>{label}</Text>
+  // Each stat tile carries its own accent along the top edge.
+  const stat = (label: string, value: number | string, accent: string) => (
+    <Card
+      style={{
+        flex: 1, alignItems: "center", marginHorizontal: 4,
+        borderTopWidth: 3, borderTopColor: accent,
+        paddingVertical: 14, paddingHorizontal: 10,
+      }}
+    >
+      <Text style={{ color: t.text, fontSize: 22, fontWeight: "800" }}>{value}</Text>
+      <Text style={{ color: t.textMuted, fontSize: 11, marginTop: 2 }}>{label}</Text>
     </Card>
   );
 
@@ -55,11 +62,16 @@ export default function Home() {
 
       <Pressable
         onPress={() => router.push("/(tabs)/search")}
-        style={{
-          flexDirection: "row", alignItems: "center", backgroundColor: t.inputBg,
-          borderColor: t.border, borderWidth: 1, borderRadius: radius.lg,
-          paddingHorizontal: 14, paddingVertical: 14, marginVertical: spacing.sm,
-        }}
+        accessibilityRole="button"
+        accessibilityLabel="Search your stuff"
+        style={[
+          {
+            flexDirection: "row", alignItems: "center", backgroundColor: t.card,
+            borderRadius: radius.lg, paddingHorizontal: 16, paddingVertical: 15,
+            marginVertical: spacing.sm,
+          },
+          elevation(t).card,
+        ]}
       >
         <Ionicons name="search" size={20} color={t.textMuted} />
         <Text style={{ color: t.textMuted, fontSize: 16, marginLeft: 8 }}>
@@ -77,9 +89,9 @@ export default function Home() {
       </View>
 
       <View style={{ flexDirection: "row", marginTop: spacing.md, marginHorizontal: -4 }}>
-        {stat("Containers", data.totals.containers)}
-        {stat("Items", data.totals.items)}
-        {stat("Locations", data.totals.locations)}
+        {stat("Containers", data.totals.containers, t.primary)}
+        {stat("Items", data.totals.items, t.accent)}
+        {stat("Locations", data.totals.locations, t.violet)}
       </View>
 
       {data.unprinted_labels > 0 && (
@@ -133,9 +145,17 @@ export default function Home() {
       ))}
 
       <Card style={{ marginTop: spacing.md }}>
-        <Text style={{ color: t.textMuted, fontSize: 13 }}>
+        <Text style={{ color: t.textMuted, fontSize: 12, marginBottom: 6 }}>
           Storage: {formatBytes(data.storage.bytes_used)} of {formatBytes(data.storage.bytes_limit)} used
         </Text>
+        <View style={{ height: 5, borderRadius: 99, backgroundColor: t.elevated, overflow: "hidden" }}>
+          <View
+            style={{
+              width: `${Math.min(100, Math.round((data.storage.bytes_used / data.storage.bytes_limit) * 100))}%`,
+              height: "100%", borderRadius: 99, backgroundColor: t.primary,
+            }}
+          />
+        </View>
       </Card>
     </Screen>
   );

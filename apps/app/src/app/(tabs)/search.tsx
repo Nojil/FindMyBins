@@ -8,7 +8,7 @@ import type { SearchContainerResult, SearchItemResult } from "@findmybins/core";
 import type { NaturalSearchResult } from "@findmybins/api-client";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
-import { spacing, useTheme } from "../../lib/theme";
+import { elevation, spacing, useTheme } from "../../lib/theme";
 import { Badge, Card, EmptyState, Screen, SectionTitle, TextField, Title } from "../../ui";
 
 export default function Search() {
@@ -133,10 +133,12 @@ export default function Search() {
               <Pressable
                 key={h.id}
                 onPress={() => { setQuery(h.query_text); run(h.query_text); }}
-                style={{
-                  backgroundColor: t.card, borderColor: t.border, borderWidth: 1,
-                  borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8,
-                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Search again for ${h.query_text}`}
+                style={[
+                  { backgroundColor: t.card, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 },
+                  elevation(t).chip,
+                ]}
               >
                 <Text style={{ color: t.text, fontSize: 14 }}>{h.query_text}</Text>
               </Pressable>

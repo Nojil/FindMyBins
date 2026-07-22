@@ -11,26 +11,42 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useColorScheme } from "react-native";
 import { api, storage } from "./api";
 
+// "Graphite Elevation": depth comes from layered shadows rather than borders
+// or blur. Cool neutral light mode, charcoal dark mode, solid-fill cards.
+
 export const palette = {
   blue: "#1E6FD9",
   blueDark: "#1558B0",
-  teal: "#0D9488",
+  teal: "#14B8A6",
+  violet: "#7C6FEE",
+  violetDark: "#9C8CF5",
   aqua: "#67E8F9",
   navy: "#0F2A43",
 };
 
 export interface Theme {
   dark: boolean;
+  /** Solid fallback fill; `bgGradient` is what Screen actually paints. */
   bg: string;
+  bgGradient: readonly [string, string];
   card: string;
   /** Slightly raised surface for grouped rows and inputs on top of cards. */
   elevated: string;
+  /**
+   * Subtle line/fill colour. Cards, inputs, and chips no longer draw a border
+   * (elevation carries them) — this remains for dividers, progress tracks,
+   * step dots, and unselected option outlines.
+   */
   border: string;
+  /** Hairline above the tab bar. */
+  divider: string;
   text: string;
   textMuted: string;
   primary: string;
   primaryText: string;
   accent: string;
+  /** Third stat accent (Locations tile). */
+  violet: string;
   danger: string;
   warning: string;
   inputBg: string;
@@ -39,16 +55,19 @@ export interface Theme {
 
 export const lightTheme: Theme = {
   dark: false,
-  bg: "#FAF8F4",
+  bg: "#F4F6F8",
+  bgGradient: ["#F4F6F8", "#EDEFF2"],
   card: "#FFFFFF",
-  elevated: "#F4F1EB",
-  border: "#E4DFD6",
-  text: "#16212C",
-  textMuted: "#5C6874",
+  elevated: "#EDEFF2",
+  border: "#DDE2E7",
+  divider: "rgba(16,24,32,0.06)",
+  text: "#17212B",
+  textMuted: "#64707C",
   primary: palette.blue,
   primaryText: "#FFFFFF",
   accent: palette.teal,
-  danger: "#B4392F",
+  violet: palette.violet,
+  danger: "#C4453B",
   warning: "#B45309",
   inputBg: "#FFFFFF",
   tabBar: "#FFFFFF",
@@ -56,20 +75,44 @@ export const lightTheme: Theme = {
 
 export const darkTheme: Theme = {
   dark: true,
-  bg: "#0E141B",
-  card: "#182230",
-  elevated: "#1F2B3A",
-  border: "#2A3746",
+  bg: "#1B222B",
+  bgGradient: ["#1B222B", "#141A21"],
+  card: "#212A33",
+  elevated: "#1A222B",
+  border: "#33404D",
+  divider: "rgba(255,255,255,0.06)",
   text: "#EDF1F5",
-  textMuted: "#9BA9B8",
-  primary: "#5B9EEC",
-  primaryText: "#08121C",
+  textMuted: "#94A3B2",
+  primary: "#4C94E8",
+  primaryText: "#FFFFFF",
   accent: "#2DD4BF",
-  danger: "#F08A80",
-  warning: "#FBBF24",
-  inputBg: "#121C27",
-  tabBar: "#131D28",
+  violet: palette.violetDark,
+  danger: "#E06A61",
+  warning: "#F5B968",
+  inputBg: "#212A33",
+  tabBar: "#171E25",
 };
+
+/**
+ * Shared elevation recipes. React Native takes a single shadow, so each is the
+ * visual equivalent of the mock's layered pair, plus an Android `elevation`.
+ */
+export function elevation(t: Theme) {
+  return {
+    /** Cards, list rows, inputs, search bar, stat tiles. */
+    card: t.dark
+      ? { shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }
+      : { shadowColor: "#101820", shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+    /** Smaller lift for pills and chips. */
+    chip: t.dark
+      ? { shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 }
+      : { shadowColor: "#101820", shadowOpacity: 0.05, shadowRadius: 7, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+    /** Coloured glow under the primary button and the centre Scan action. */
+    primary: t.dark
+      ? { shadowColor: "#4C94E8", shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8 }
+      : { shadowColor: palette.blue, shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
+  };
+}
 
 export type ThemeMode = "system" | "light" | "dark";
 const MODE_KEY = "fmb_theme_mode";

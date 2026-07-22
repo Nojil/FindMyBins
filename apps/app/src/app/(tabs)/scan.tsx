@@ -5,10 +5,11 @@ import React, { useState } from "react";
 import { Platform, Text, View } from "react-native";
 import { router } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
 import { offlineContainerByQr, useSync } from "../../lib/offline";
-import { radius, spacing, useTheme } from "../../lib/theme";
+import { elevation, radius, spacing, useTheme } from "../../lib/theme";
 import { Button, EmptyState, Screen, Subtitle, TextField, Title } from "../../ui";
 
 function extractToken(value: string): string | null {
@@ -111,11 +112,35 @@ export default function Scan() {
       )}
 
       {!nativeCamera && (
-        <EmptyState
-          icon="qr-code-outline"
-          title="Scan with your phone"
-          body="Use your phone's camera on a label, or look up a container below."
-        />
+        <>
+          {/* Web has no in-app camera: a placeholder holds the same space the
+              live preview occupies on device, so the layout doesn't shift. */}
+          <View
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel="Camera preview is unavailable on the web"
+            style={[
+              {
+                height: 200, borderRadius: radius.lg, backgroundColor: t.elevated,
+                alignItems: "center", justifyContent: "center", marginBottom: spacing.md,
+              },
+              elevation(t).card,
+            ]}
+          >
+            <Ionicons name="qr-code-outline" size={34} color={t.textMuted} />
+            <Text
+              style={{
+                fontFamily: Platform.select({ web: "ui-monospace, Menlo, monospace", default: "monospace" }),
+                fontSize: 12, color: t.textMuted, letterSpacing: 1, marginTop: 10,
+              }}
+            >
+              CAMERA PREVIEW
+            </Text>
+          </View>
+          <Text style={{ color: t.textMuted, fontSize: 14, marginBottom: spacing.md }}>
+            Use your phone's camera on a label, or look up a container below.
+          </Text>
+        </>
       )}
 
       <View style={{ marginTop: spacing.lg }}>
