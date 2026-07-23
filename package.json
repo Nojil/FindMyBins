@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "app": "npm run start --workspace @findmybins/app",
+    "app:clear": "npm run start --workspace @findmybins/app -- -c",
     "web": "npm run web --workspace @findmybins/app",
     "web:export": "npm run export:web --workspace @findmybins/app",
     "web:deploy": "npm run web:export && npx base44 site deploy --yes",
