@@ -5,8 +5,8 @@
 // app polls to claim it (see api/auth-handoff). No custom-scheme round trip,
 // which is what kept breaking in Expo Go.
 
-import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, Text, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, AppState, Platform, Pressable, Text, View } from "react-native";
 import { Link, router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Crypto from "expo-crypto";
@@ -43,6 +43,34 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [social, setSocial] = useState<OAuthProvider | null>(null);
   const pollRef = useRef(false);
+  const handoffRef = useRef<string | null>(null);
+  const claimedRef = useRef(false);
+
+  const completeSignIn = useCallback(async () => {
+    if (claimedRef.current) return;
+    claimedRef.current = true;
+    handoffRef.current = null;
+    pollRef.current = false;
+    await refresh();
+    router.replace("/");
+  }, [refresh]);
+
+  // Backup trigger: whenever the app returns to the foreground during a pending
+  // social sign-in, try to claim. This catches the case where closing the OAuth
+  // tab doesn't cleanly resolve openAuthSessionAsync.
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state !== "active" || !handoffRef.current) return;
+      (async () => {
+        const id = handoffRef.current;
+        if (!id) return;
+        let result: "pending" | "ready" | "expired" = "pending";
+        try { result = await api.auth.claimHandoff(id); } catch { return; }
+        if (result === "ready") await completeSignIn();
+      })();
+    });
+    return () => sub.remove();
+  }, [completeSignIn]);
 
   const submit = async () => {
     setError(null);
@@ -69,42 +97,47 @@ export default function SignIn() {
     }
 
     setSocial(provider);
+    claimedRef.current = false;
     const handoff = newHandoffId();
+    handoffRef.current = handoff; // lets the AppState foreground-claim find it
     const relay = `${WEB_APP_URL}/native-auth.html?handoff=${handoff}`;
 
-    try {
-      // Open the provider; the browser returns to the relay page, which stores
-      // the token server-side. We don't depend on the browser result at all —
-      // we poll the handoff, which works even when the tab just closes.
-      const opened = WebBrowser.openAuthSessionAsync(
-        api.auth.providerLoginUrl(provider, relay),
-        relay,
-      );
-
-      pollRef.current = true;
-      const deadline = Date.now() + 150_000;
-      let claimed = false;
-      while (pollRef.current && Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 2000));
+    // Claim the stored token, retrying to cover the moment right after the
+    // relay's store call and any read-after-write lag.
+    const claimToken = async (attempts: number): Promise<boolean> => {
+      for (let i = 0; i < attempts && pollRef.current; i++) {
         let result: "pending" | "ready" | "expired" = "pending";
-        try { result = await api.auth.claimHandoff(handoff); } catch { /* keep polling */ }
-        if (result === "ready") { claimed = true; break; }
-        if (result === "expired") break;
+        try { result = await api.auth.claimHandoff(handoff); } catch { /* retry */ }
+        if (result === "ready") return true;
+        if (result === "expired") return false;
+        await new Promise((r) => setTimeout(r, 1500));
       }
-      pollRef.current = false;
-      try { WebBrowser.dismissAuthSession(); } catch { /* already closed */ }
-      await opened.catch(() => undefined);
+      return false;
+    };
+
+    try {
+      pollRef.current = true;
+      // openAuthSessionAsync blocks until the user closes the tab (our relay
+      // doesn't redirect back). Crucially, poll AFTER it resolves — while the
+      // Custom Tab is in front on Android the app is paused and a background
+      // poll loop won't run. Once the tab closes the app is foregrounded and
+      // JS runs reliably, so this is when the token is fetched.
+      await WebBrowser.openAuthSessionAsync(api.auth.providerLoginUrl(provider, relay), relay);
+      const claimed = await claimToken(20);
 
       if (claimed) {
-        await refresh();
-        router.replace("/");
+        await completeSignIn();
         return;
       }
-      setError("Sign-in didn't complete. Please try again, or use email and password.");
+      // The AppState foreground handler may have claimed it in parallel.
+      if (!claimedRef.current) {
+        setError("Sign-in didn't complete. Please try again, or use email and password.");
+      }
     } catch {
-      setError("Sign-in didn't complete. Please try again.");
+      if (!claimedRef.current) setError("Sign-in didn't complete. Please try again.");
     } finally {
       pollRef.current = false;
+      handoffRef.current = null;
       setSocial(null);
     }
   };
