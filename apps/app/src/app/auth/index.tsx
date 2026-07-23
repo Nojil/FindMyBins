@@ -9,7 +9,7 @@ import { Link, router } from "expo-router";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
-import { type OAuthProvider } from "@findmybins/core";
+import { WEB_APP_URL, type OAuthProvider } from "@findmybins/core";
 import { ApiError } from "@findmybins/api-client";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
@@ -49,12 +49,14 @@ export default function SignIn() {
       return;
     }
     try {
-      // Base44 accepts a custom-scheme `from_url` and redirects to it verbatim
-      // after the provider round trip, so the app is the redirect target
-      // directly — no web page in between to relay the token.
+      // Base44 validates the redirect domain at its callback step and rejects
+      // custom schemes, so the app can't be the redirect target directly. It
+      // returns to a tiny static relay page on our https domain, which hands
+      // the token to this app's scheme (see public/native-auth.html).
       const redirectUri = Linking.createURL("auth-callback");
+      const relay = `${WEB_APP_URL}/native-auth.html?return_to=${encodeURIComponent(redirectUri)}`;
       const result = await WebBrowser.openAuthSessionAsync(
-        api.auth.providerLoginUrl(provider, redirectUri),
+        api.auth.providerLoginUrl(provider, relay),
         redirectUri,
       );
       if (result.type === "success" && result.url) {

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signing in — FindMyBins</title>
+<!--
+  Native OAuth relay.
+
+  Base44 validates the redirect domain at its callback step and rejects custom
+  schemes, so the app cannot be the redirect target directly — it has to come
+  back to this https page first, which then hands the token to the app.
+
+  This is deliberately a static file (served from public/, no React bundle):
+  the auth sheet loads it instantly, and the only work it does is bounce to the
+  app's scheme. Browsers frequently block a scripted navigation to a custom
+  scheme without a user gesture, so an automatic attempt is followed by a real
+  button the user can tap, which always works.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center;
+    justify-content: center; padding: 24px;
+    font-family: -apple-system, system-ui, Roboto, sans-serif;
+    background: #F4F6F8; color: #17212B;
+  }
+  .card {
+    width: 100%; max-width: 340px; text-align: center;
+    background: #fff; border-radius: 16px; padding: 28px 22px;
+    box-shadow: 0 1px 2px rgba(16,24,32,.04), 0 6px 16px rgba(16,24,32,.06);
+  }
+  h1 { font-size: 18px; margin: 0 0 6px; }
+  p { font-size: 14px; line-height: 1.5; color: #64707C; margin: 0 0 18px; }
+  a.btn {
+    display: block; text-decoration: none; background: #1E6FD9; color: #fff;
+    font-size: 16px; font-weight: 600; padding: 15px 20px; border-radius: 16px;
+    box-shadow: 0 10px 24px rgba(30,111,217,.3);
+  }
+  .err { color: #C4453B; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1B222B; color: #EDF1F5; }
+    .card { background: #212A33; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 18px rgba(0,0,0,.5); }
+    p { color: #94A3B2; }
+    a.btn { background: #4C94E8; box-shadow: 0 10px 26px rgba(76,148,232,.4); }
+    .err { color: #E06A61; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1 id="title">Signing you in…</h1>
+  <p id="msg">Returning to FindMyBins.</p>
+  <a id="btn" class="btn" style="display:none" href="#">Open FindMyBins</a>
+</div>
+<script>
+(function () {
+  var title = document.getElementById("title");
+  var msg = document.getElementById("msg");
+  var btn = document.getElementById("btn");
+
+  function param(name) {
+    // The token can arrive as a query parameter or a fragment.
+    var re = new RegExp("[?&#]" + name + "=([^&#]*)");
+    var m = re.exec(window.location.search) || re.exec(window.location.hash);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  function fail(text) {
+    title.textContent = "Couldn't finish signing in";
+    title.className = "err";
+    msg.textContent = text;
+  }
+
+  var returnTo = param("return_to");
+  var token = param("access_token");
+
+  if (!returnTo) return fail("Missing the return address. Please try again from the app.");
+  // Only ever hand the token to this app's own schemes.
+  if (!/^(findmybins|exp|exps):/.test(returnTo)) return fail("Unrecognised return address.");
+  if (!token) return fail("No sign-in token was returned. Please try again.");
+
+  var target = returnTo + (returnTo.indexOf("?") === -1 ? "?" : "&") +
+    "access_token=" + encodeURIComponent(token);
+
+  btn.href = target;
+
+  // Automatic attempt first; many browsers allow it.
+  try { window.location.replace(target); } catch (e) {}
+
+  // If we're still here, the browser blocked the scheme navigation because it
+  // wasn't user-initiated. A tap is a real gesture and always gets through.
+  setTimeout(function () {
+    title.textContent = "Almost there";
+    msg.textContent = "Tap below to return to FindMyBins.";
+    btn.style.display = "block";
+  }, 1200);
+})();
+</script>
+</body>
+</html>
