@@ -105,26 +105,46 @@ export default function SignIn() {
     // Claim the stored token, retrying to cover the moment right after the
     // relay's store call and any read-after-write lag.
     const claimToken = async (attempts: number): Promise<boolean> => {
+      let last = "";
       for (let i = 0; i < attempts && pollRef.current; i++) {
         let result: "pending" | "ready" | "expired" = "pending";
-        try { result = await api.auth.claimHandoff(handoff); } catch { /* retry */ }
+        try { result = await api.auth.claimHandoff(handoff); }
+        catch (e: any) { last = `error ${e?.status ?? "?"}`; }
         if (result === "ready") return true;
-        if (result === "expired") return false;
+        if (result === "expired") { console.log("[oauth] handoff expired"); return false; }
+        last = last || result;
         await new Promise((r) => setTimeout(r, 1500));
       }
+      console.log(`[oauth] handoff never claimed (last: ${last})`);
       return false;
     };
 
     try {
       pollRef.current = true;
-      // openAuthSessionAsync blocks until the user closes the tab (our relay
-      // doesn't redirect back). Crucially, poll AFTER it resolves — while the
-      // Custom Tab is in front on Android the app is paused and a background
-      // poll loop won't run. Once the tab closes the app is foregrounded and
-      // JS runs reliably, so this is when the token is fetched.
-      await WebBrowser.openAuthSessionAsync(api.auth.providerLoginUrl(provider, relay), relay);
-      const claimed = await claimToken(20);
+      const result = await WebBrowser.openAuthSessionAsync(
+        api.auth.providerLoginUrl(provider, relay),
+        relay,
+      );
+      // Diagnostic (visible in the Metro terminal) — tells us which path ran.
+      console.log("[oauth] session result:", result.type,
+        result.type === "success" ? `url has token: ${/access_token=/.test((result as any).url ?? "")}` : "");
 
+      // Fast path: if the auth session resolved with the redirect URL, the
+      // token is right there — adopt it directly, no relay/handoff needed.
+      // (This is the common case when the browser hands the redirect back.)
+      if (result.type === "success" && result.url) {
+        const m = result.url.match(/[?&#]access_token=([^&#]+)/);
+        if (m) {
+          await api.auth.adoptToken(decodeURIComponent(m[1]));
+          await completeSignIn();
+          return;
+        }
+      }
+
+      // Otherwise the relay stashed the token server-side. Poll to claim it —
+      // AFTER the tab closed, since on Android the app is paused while the
+      // Custom Tab is in front and a poll loop there wouldn't run.
+      const claimed = await claimToken(20);
       if (claimed) {
         await completeSignIn();
         return;
