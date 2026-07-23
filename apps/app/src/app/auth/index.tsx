@@ -42,6 +42,10 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [social, setSocial] = useState<OAuthProvider | null>(null);
+  // On-screen trace of the native OAuth steps, so a failure is legible on the
+  // device without watching the Metro terminal.
+  const [trace, setTrace] = useState<string[]>([]);
+  const log = (line: string) => setTrace((prev) => [...prev.slice(-6), line]);
   const pollRef = useRef(false);
   const handoffRef = useRef<string | null>(null);
   const claimedRef = useRef(false);
@@ -97,63 +101,57 @@ export default function SignIn() {
     }
 
     setSocial(provider);
+    setTrace([]);
     claimedRef.current = false;
     const handoff = newHandoffId();
     handoffRef.current = handoff; // lets the AppState foreground-claim find it
     const relay = `${WEB_APP_URL}/native-auth.html?handoff=${handoff}`;
 
-    // Claim the stored token, retrying to cover the moment right after the
-    // relay's store call and any read-after-write lag.
     const claimToken = async (attempts: number): Promise<boolean> => {
       let last = "";
       for (let i = 0; i < attempts && pollRef.current; i++) {
         let result: "pending" | "ready" | "expired" = "pending";
         try { result = await api.auth.claimHandoff(handoff); }
-        catch (e: any) { last = `error ${e?.status ?? "?"}`; }
+        catch (e: any) { last = `err ${e?.status ?? "?"}`; }
         if (result === "ready") return true;
-        if (result === "expired") { console.log("[oauth] handoff expired"); return false; }
+        if (result === "expired") { log("handoff: expired"); return false; }
         last = last || result;
+        if (i === 2) log(`claiming… (${last})`);
         await new Promise((r) => setTimeout(r, 1500));
       }
-      console.log(`[oauth] handoff never claimed (last: ${last})`);
+      log(`handoff never claimed (last: ${last})`);
       return false;
     };
 
     try {
       pollRef.current = true;
+      log("opening provider…");
       const result = await WebBrowser.openAuthSessionAsync(
         api.auth.providerLoginUrl(provider, relay),
         relay,
       );
-      // Diagnostic (visible in the Metro terminal) — tells us which path ran.
-      console.log("[oauth] session result:", result.type,
-        result.type === "success" ? `url has token: ${/access_token=/.test((result as any).url ?? "")}` : "");
+      const url = (result as any).url as string | undefined;
+      log(`returned: ${result.type}${url ? `, token in url: ${/access_token=/.test(url)}` : ""}`);
 
-      // Fast path: if the auth session resolved with the redirect URL, the
-      // token is right there — adopt it directly, no relay/handoff needed.
-      // (This is the common case when the browser hands the redirect back.)
-      if (result.type === "success" && result.url) {
-        const m = result.url.match(/[?&#]access_token=([^&#]+)/);
+      // Fast path: the auth session handed us the redirect URL with the token.
+      if (result.type === "success" && url) {
+        const m = url.match(/[?&#]access_token=([^&#\s]+)/);
         if (m) {
+          log("adopting token from url");
           await api.auth.adoptToken(decodeURIComponent(m[1]));
           await completeSignIn();
           return;
         }
       }
 
-      // Otherwise the relay stashed the token server-side. Poll to claim it —
-      // AFTER the tab closed, since on Android the app is paused while the
-      // Custom Tab is in front and a poll loop there wouldn't run.
+      // Otherwise the relay stored it server-side; poll to claim.
       const claimed = await claimToken(20);
-      if (claimed) {
-        await completeSignIn();
-        return;
-      }
-      // The AppState foreground handler may have claimed it in parallel.
+      if (claimed) { await completeSignIn(); return; }
       if (!claimedRef.current) {
         setError("Sign-in didn't complete. Please try again, or use email and password.");
       }
-    } catch {
+    } catch (e: any) {
+      log(`error: ${String(e?.message ?? e).slice(0, 80)}`);
       if (!claimedRef.current) setError("Sign-in didn't complete. Please try again.");
     } finally {
       pollRef.current = false;
@@ -208,6 +206,21 @@ export default function SignIn() {
 
       <SocialButton provider="google" icon="logo-google" label="Continue with Google" />
       <SocialButton provider="apple" icon="logo-apple" label="Continue with Apple" />
+
+      {trace.length > 0 && (
+        <View
+          style={{
+            backgroundColor: t.elevated, borderRadius: radius.md,
+            padding: spacing.sm, marginTop: spacing.xs,
+          }}
+        >
+          {trace.map((line, i) => (
+            <Text key={i} style={{ color: t.textMuted, fontSize: 12, fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" }) }}>
+              {line}
+            </Text>
+          ))}
+        </View>
+      )}
 
       <View style={{ flexDirection: "row", alignItems: "center", marginVertical: spacing.md }}>
         <View style={{ flex: 1, height: 1, backgroundColor: t.border }} />
