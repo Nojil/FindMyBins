@@ -1,0 +1,14 @@
+{
+  "name": "AuthHandoff",
+  "type": "object",
+  "title": "Auth Handoff",
+  "description": "Short-lived, single-use OAuth token handoff for native sign-in. The browser stores the freshly issued token under an unguessable id the app generated; the app claims it by polling. Records live ~2 minutes and are consumed on first claim, which avoids relying on a browser-to-app deep link.",
+  "properties": {
+    "handoff_hash": { "type": "string", "description": "SHA-256 of the raw handoff id; the raw value only ever exists in the app and the browser URL." },
+    "access_token": { "type": "string" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "claimed": { "type": "boolean", "default": false }
+  },
+  "required": ["handoff_hash", "expires_at"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

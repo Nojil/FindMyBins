@@ -5,17 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Signing in — FindMyBins</title>
 <!--
-  Native OAuth relay.
+  Native OAuth relay (handoff model).
 
-  Base44 validates the redirect domain at its callback step and rejects custom
-  schemes, so the app cannot be the redirect target directly — it has to come
-  back to this https page first, which then hands the token to the app.
-
-  This is deliberately a static file (served from public/, no React bundle):
-  the auth sheet loads it instantly, and the only work it does is bounce to the
-  app's scheme. Browsers frequently block a scripted navigation to a custom
-  scheme without a user gesture, so an automatic attempt is followed by a real
-  button the user can tap, which always works.
+  Base44 rejects custom schemes as redirect domains, so native sign-in returns
+  to this https page. Rather than try to bounce the token back to the app via a
+  custom scheme (unreliable in Expo Go, where the scheme reloads the project and
+  drops the token), this page STORES the token server-side under the unguessable
+  handoff id the app passed in `state`. The app polls `api/auth-handoff claim`
+  and picks it up. The user just closes this tab / taps Done.
 -->
 <style>
   :root { color-scheme: light dark; }
@@ -30,19 +27,13 @@
     background: #fff; border-radius: 16px; padding: 28px 22px;
     box-shadow: 0 1px 2px rgba(16,24,32,.04), 0 6px 16px rgba(16,24,32,.06);
   }
-  h1 { font-size: 18px; margin: 0 0 6px; }
-  p { font-size: 14px; line-height: 1.5; color: #64707C; margin: 0 0 18px; }
-  a.btn {
-    display: block; text-decoration: none; background: #1E6FD9; color: #fff;
-    font-size: 16px; font-weight: 600; padding: 15px 20px; border-radius: 16px;
-    box-shadow: 0 10px 24px rgba(30,111,217,.3);
-  }
+  h1 { font-size: 18px; margin: 0 0 8px; }
+  p { font-size: 14px; line-height: 1.5; color: #64707C; margin: 0; }
   .err { color: #C4453B; }
   @media (prefers-color-scheme: dark) {
     body { background: #1B222B; color: #EDF1F5; }
     .card { background: #212A33; box-shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 18px rgba(0,0,0,.5); }
     p { color: #94A3B2; }
-    a.btn { background: #4C94E8; box-shadow: 0 10px 26px rgba(76,148,232,.4); }
     .err { color: #E06A61; }
   }
 </style>
@@ -50,57 +41,47 @@
 <body>
 <div class="card">
   <h1 id="title">Signing you in…</h1>
-  <p id="msg">Returning to FindMyBins.</p>
-  <a id="btn" class="btn" style="display:none" href="#">Open FindMyBins</a>
+  <p id="msg">One moment.</p>
 </div>
 <script>
 (function () {
+  var APP_ID = "6a5fd45e9129f5171ccbb963";
   var title = document.getElementById("title");
   var msg = document.getElementById("msg");
-  var btn = document.getElementById("btn");
 
   function param(name) {
-    // The token can arrive as a query parameter or a fragment.
     var re = new RegExp("[?&#]" + name + "=([^&#]*)");
     var m = re.exec(window.location.search) || re.exec(window.location.hash);
     return m ? decodeURIComponent(m[1]) : null;
   }
-
   function fail(text) {
     title.textContent = "Couldn't finish signing in";
     title.className = "err";
     msg.textContent = text;
   }
+  function done() {
+    title.textContent = "You're signed in";
+    msg.textContent = "Return to FindMyBins — it's finishing up. You can close this tab.";
+  }
 
-  var returnTo = param("return_to");
+  var handoff = param("handoff");
   var token = param("access_token");
 
-  if (!returnTo) return fail("Missing the return address. Please try again from the app.");
-  // Only ever hand the token to this app's own schemes.
-  if (!/^(findmybins|exp|exps):/.test(returnTo)) return fail("Unrecognised return address.");
+  if (!handoff || !/^[0-9A-Za-z]{32}$/.test(handoff)) return fail("Missing sign-in reference. Please try again from the app.");
   if (!token) return fail("No sign-in token was returned. Please try again.");
 
-  var target = returnTo + (returnTo.indexOf("?") === -1 ? "?" : "&") +
-    "access_token=" + encodeURIComponent(token);
-
-  btn.href = target;
-
-  // Automatic attempts first; some browsers allow one of these.
-  try { window.location.replace(target); } catch (e) {}
-  try {
-    var f = document.createElement("iframe");
-    f.style.display = "none";
-    f.src = target;
-    document.body.appendChild(f);
-  } catch (e) {}
-
-  // If we're still here, the browser blocked the scheme navigation because it
-  // wasn't user-initiated. A tap is a real gesture and always gets through.
-  setTimeout(function () {
-    title.textContent = "Almost there";
-    msg.textContent = "Tap below to return to FindMyBins.";
-    btn.style.display = "block";
-  }, 600);
+  fetch("https://base44.app/api/apps/" + APP_ID + "/functions/api/auth-handoff", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-App-Id": APP_ID },
+    body: JSON.stringify({ action: "store", payload: { handoff_id: handoff, access_token: token } })
+  }).then(function (r) {
+    if (!r.ok) throw new Error("store failed " + r.status);
+    return r.json();
+  }).then(function () {
+    done();
+  }).catch(function () {
+    fail("We couldn't complete sign-in. Please try again.");
+  });
 })();
 </script>
 </body>

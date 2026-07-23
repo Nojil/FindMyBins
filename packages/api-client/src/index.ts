@@ -153,6 +153,24 @@ export function createApi(storage: TokenStorage) {
         base44.auth.setToken(token, false);
         await storage.set(TOKEN_KEY, token);
       },
+      /**
+       * Claim a token the browser stored under `handoffId` after native OAuth.
+       * Unauthenticated by design — the app has no session yet. Returns "pending"
+       * while the user is still at the provider, "ready" with the token once,
+       * or "expired".
+       */
+      async claimHandoff(handoffId: string): Promise<"pending" | "ready" | "expired"> {
+        const res: any = await base44.functions.invoke("api/auth-handoff", {
+          action: "claim",
+          payload: { handoff_id: handoffId },
+        });
+        const body = res?.data?.data ?? res?.data ?? {};
+        if (body.status === "ready" && body.access_token) {
+          await this.adoptToken(body.access_token);
+          return "ready";
+        }
+        return body.status === "expired" ? "expired" : "pending";
+      },
       async signIn(email: string, password: string): Promise<void> {
         const res: any = await base44.auth.loginViaEmailPassword(email, password);
         const token = res?.access_token ?? res?.data?.access_token;

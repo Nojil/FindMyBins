@@ -2,7 +2,6 @@
 // signedOut → (auth) → onboarding (no 18+/terms or no workspace) → ready.
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import * as Linking from "expo-linking";
 import type { Profile, WorkspaceSummary } from "@findmybins/core";
 import { ApiError } from "@findmybins/api-client";
 import { api, storage } from "./api";
@@ -62,32 +61,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
       await refresh();
     })();
-  }, [refresh]);
-
-  /**
-   * Adopt an access token arriving on a deep link, wherever the app happens to
-   * be. Native OAuth returns through the relay page to findmybins://auth-callback
-   * (exp:// in Expo Go); handling it here rather than in a screen means it works
-   * on a cold start and on resume, and doesn't depend on the router having
-   * hydrated its params yet — which is what previously dropped the token and
-   * bounced the user back to sign-in.
-   */
-  useEffect(() => {
-    let cancelled = false;
-    const adopt = async (url: string | null) => {
-      if (!url || cancelled) return;
-      const match = url.match(/[?&#]access_token=([^&#]+)/);
-      if (!match) return;
-      try {
-        await api.auth.adoptToken(decodeURIComponent(match[1]));
-        if (!cancelled) await refresh();
-      } catch {
-        // Leave the session as-is; the sign-in screen reports the failure.
-      }
-    };
-    Linking.getInitialURL().then(adopt).catch(() => {});
-    const sub = Linking.addEventListener("url", (event) => { void adopt(event.url); });
-    return () => { cancelled = true; sub.remove(); };
   }, [refresh]);
 
   const signIn = useCallback(async (email: string, password: string) => {
