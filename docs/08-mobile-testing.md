@@ -98,7 +98,7 @@ Nothing native has been verified on hardware yet, so this is the highest-value l
 
 ## Notes and gotchas
 
-- **Deep-link scheme differs in Expo Go.** It uses `exp://…/--/auth-callback` instead of `findmybins://auth-callback`; the OAuth callback already accepts both, so social sign-in works in Expo Go.
+- **Native OAuth redirects straight into the app.** Base44 accepts a custom-scheme `from_url` and redirects to it verbatim after the provider round trip, so `openAuthSessionAsync` is pointed at `Linking.createURL("auth-callback")` — `exp://…/--/auth-callback` in Expo Go, `findmybins://auth-callback` in a build. There is no web page relaying the token, which is what previously made Expo Go sign-in fail silently. `app/auth-callback.tsx` remains as a fallback for when the OS delivers the deep link to the app instead of resolving the auth session.
 - **Universal links won't open the app** until `findmybins.com` serves the `/.well-known` files. Until then, scanning a printed label with the phone's *system* camera opens the web app — in-app scanning works fine.
 - **Monorepo:** `apps/app/metro.config.js` watches the workspace root so edits to `packages/core` and `packages/api-client` hot-reload. Don't delete it.
 - **Keep dependencies SDK-aligned.** Run `npx expo install --check` after adding packages; mismatched native modules fail confusingly inside Expo Go. Use `npx expo install <pkg>`, not `npm install <pkg>`.

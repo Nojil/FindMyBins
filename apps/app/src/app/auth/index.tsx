@@ -9,7 +9,7 @@ import { Link, router } from "expo-router";
 import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { Ionicons } from "@expo/vector-icons";
-import { WEB_APP_URL, type OAuthProvider } from "@findmybins/core";
+import { type OAuthProvider } from "@findmybins/core";
 import { ApiError } from "@findmybins/api-client";
 import { api } from "../../lib/api";
 import { useSession } from "../../lib/session";
@@ -49,14 +49,17 @@ export default function SignIn() {
       return;
     }
     try {
+      // Base44 accepts a custom-scheme `from_url` and redirects to it verbatim
+      // after the provider round trip, so the app is the redirect target
+      // directly — no web page in between to relay the token.
       const redirectUri = Linking.createURL("auth-callback");
-      const callback = `${WEB_APP_URL}/auth/callback?return_to=${encodeURIComponent(redirectUri)}`;
       const result = await WebBrowser.openAuthSessionAsync(
-        api.auth.providerLoginUrl(provider, callback),
+        api.auth.providerLoginUrl(provider, redirectUri),
         redirectUri,
       );
       if (result.type === "success" && result.url) {
-        const match = result.url.match(/[?&]access_token=([^&#]+)/);
+        // The token may arrive as a query param or a fragment.
+        const match = result.url.match(/[?&#]access_token=([^&#]+)/);
         const token = match ? decodeURIComponent(match[1]) : null;
         if (token) {
           await api.auth.adoptToken(token);
@@ -64,6 +67,8 @@ export default function SignIn() {
           router.replace("/");
           return;
         }
+        setError("Signed in, but no token came back. Please try again.");
+        return;
       }
       if (result.type !== "cancel" && result.type !== "dismiss") {
         setError("Sign-in didn't complete. Please try again.");
