@@ -2,6 +2,7 @@
 // signedOut → (auth) → onboarding (no 18+/terms or no workspace) → ready.
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import * as Linking from "expo-linking";
 import type { Profile, WorkspaceSummary } from "@findmybins/core";
 import { ApiError } from "@findmybins/api-client";
 import { api, storage } from "./api";
@@ -61,6 +62,32 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
       await refresh();
     })();
+  }, [refresh]);
+
+  /**
+   * Safety net for native OAuth: adopt an access_token that arrives on ANY
+   * incoming deep link, wherever the app happens to be. The primary path is the
+   * server-side handoff (see the sign-in screen), but if a token reaches the
+   * app via its scheme instead — a cached relay, or a future development build
+   * where the scheme resolves cleanly — this catches it so it never lands on an
+   * unmatched route or the login screen with a valid token in hand.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const adopt = async (url: string | null) => {
+      if (!url || cancelled) return;
+      const match = url.match(/[?&#]access_token=([^&#\s]+)/);
+      if (!match) return;
+      try {
+        await api.auth.adoptToken(decodeURIComponent(match[1]));
+        if (!cancelled) await refresh();
+      } catch {
+        // Ignore; the sign-in screen surfaces any failure.
+      }
+    };
+    Linking.getInitialURL().then(adopt).catch(() => {});
+    const sub = Linking.addEventListener("url", (e) => { void adopt(e.url); });
+    return () => { cancelled = true; sub.remove(); };
   }, [refresh]);
 
   const signIn = useCallback(async (email: string, password: string) => {
