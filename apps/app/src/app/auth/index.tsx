@@ -3,7 +3,7 @@
 // Native: auth-session browser; the callback page forwards the token to the
 // app scheme, closing the session.
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 import { Link, router } from "expo-router";
 import * as Linking from "expo-linking";
@@ -20,7 +20,14 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignIn() {
   const t = useTheme();
-  const { signIn, refresh } = useSession();
+  const { signIn, refresh, status } = useSession();
+
+  // A deep-link token can be adopted while this screen is showing (the app
+  // resumed rather than cold-started). Move on as soon as that happens.
+  useEffect(() => {
+    if (status === "ready" || status === "onboarding") router.replace("/");
+  }, [status]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

@@ -1,29 +1,50 @@
-// Native deep-link fallback: if the OS routes findmybins://auth-callback
-// directly to the app (instead of the auth session returning it), adopt the
-// token here.
+// Landing route for the native OAuth deep link
+// (findmybins://auth-callback, exp://…/--/auth-callback in Expo Go).
+//
+// The token itself is adopted by SessionProvider's deep-link handler, which
+// sees the URL regardless of routing timing. This screen only waits for the
+// session to settle and then sends the user on — it deliberately does not read
+// the token from route params, because on a cold start those are frequently
+// empty on first render, which used to drop the token and bounce back to
+// sign-in.
 
-import React, { useEffect, useRef } from "react";
-import { router, useLocalSearchParams } from "expo-router";
-import { api } from "../lib/api";
+import React, { useEffect, useState } from "react";
+import { Text } from "react-native";
+import { router } from "expo-router";
 import { useSession } from "../lib/session";
-import { LoadingView } from "../ui";
+import { spacing, useTheme } from "../lib/theme";
+import { Button, LoadingView, Screen, Subtitle, Title } from "../ui";
+
+const TIMEOUT_MS = 12000;
 
 export default function NativeAuthCallback() {
-  const { refresh } = useSession();
-  const { access_token } = useLocalSearchParams<{ access_token?: string }>();
-  const ran = useRef(false);
+  const t = useTheme();
+  const { status } = useSession();
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
-    (async () => {
-      if (typeof access_token === "string" && access_token) {
-        await api.auth.adoptToken(access_token);
-        await refresh();
-      }
+    if (status === "ready" || status === "onboarding") {
       router.replace("/");
-    })();
-  }, [access_token, refresh]);
+    }
+  }, [status]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setTimedOut(true), TIMEOUT_MS);
+    return () => clearTimeout(id);
+  }, []);
+
+  if (timedOut && status === "signedOut") {
+    return (
+      <Screen>
+        <Title>Sign-in didn't complete</Title>
+        <Subtitle>We didn't receive a valid session. Please try again.</Subtitle>
+        <Text style={{ color: t.textMuted, fontSize: 13, marginBottom: spacing.md }}>
+          If this keeps happening, sign in with your email and password instead.
+        </Text>
+        <Button label="Back to sign in" onPress={() => router.replace("/auth")} />
+      </Screen>
+    );
+  }
 
   return <LoadingView />;
 }

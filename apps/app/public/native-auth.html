@@ -85,8 +85,14 @@
 
   btn.href = target;
 
-  // Automatic attempt first; many browsers allow it.
+  // Automatic attempts first; some browsers allow one of these.
   try { window.location.replace(target); } catch (e) {}
+  try {
+    var f = document.createElement("iframe");
+    f.style.display = "none";
+    f.src = target;
+    document.body.appendChild(f);
+  } catch (e) {}
 
   // If we're still here, the browser blocked the scheme navigation because it
   // wasn't user-initiated. A tap is a real gesture and always gets through.
@@ -94,7 +100,7 @@
     title.textContent = "Almost there";
     msg.textContent = "Tap below to return to FindMyBins.";
     btn.style.display = "block";
-  }, 1200);
+  }, 600);
 })();
 </script>
 </body>
