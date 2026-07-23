@@ -6,6 +6,8 @@ export const QR_LINK_BASE = "https://findmybins.com/q/";
 export const WEB_APP_URL = "https://find-my-bins-1ccbb963.base44.app";
 /** Base44 OAuth start endpoints live here (the static app domain does not proxy /api). */
 export const AUTH_BASE_URL = "https://app.base44.com";
+/** Base44 API host the SDK talks to (function endpoints, etc.). */
+export const SERVER_URL = "https://base44.app";
 
 export type OAuthProvider = "google" | "apple";
 

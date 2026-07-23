@@ -112,7 +112,7 @@ export default function SignIn() {
       for (let i = 0; i < attempts && pollRef.current; i++) {
         let result: "pending" | "ready" | "expired" = "pending";
         try { result = await api.auth.claimHandoff(handoff); }
-        catch (e: any) { last = `err ${e?.status ?? "?"}`; }
+        catch (e: any) { last = `err ${e?.status ?? e?.message ?? "?"}`.slice(0, 40); }
         if (result === "ready") return true;
         if (result === "expired") { log("handoff: expired"); return false; }
         last = last || result;

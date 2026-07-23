@@ -3,7 +3,7 @@
 
 import { createClient } from "@base44/sdk";
 import {
-  APP_ID, AUTH_BASE_URL,
+  APP_ID, AUTH_BASE_URL, SERVER_URL,
   type Container, type DashboardOverview, type Item, type LocationNode, type OAuthProvider,
   type Profile, type QrResolution, type SearchContainerResult, type SearchItemResult,
   type WorkspaceSummary, type WorkspaceType, type ContainerType,
@@ -155,21 +155,27 @@ export function createApi(storage: TokenStorage) {
       },
       /**
        * Claim a token the browser stored under `handoffId` after native OAuth.
-       * Unauthenticated by design — the app has no session yet. Returns "pending"
-       * while the user is still at the provider, "ready" with the token once,
-       * or "expired".
+       * Uses a RAW fetch with no Authorization header — not the SDK — because a
+       * stale/invalid token left in the SDK client from a prior failed attempt
+       * would otherwise make Base44's gateway reject this unauthenticated call
+       * with 401 before the function runs. This mirrors the relay's store call,
+       * which works for exactly that reason. Returns "pending" while the user is
+       * still at the provider, "ready" with the token once, or "expired".
        */
       async claimHandoff(handoffId: string): Promise<"pending" | "ready" | "expired"> {
-        const res: any = await base44.functions.invoke("api/auth-handoff", {
-          action: "claim",
-          payload: { handoff_id: handoffId },
+        const res = await fetch(`${SERVER_URL}/api/apps/${APP_ID}/functions/api/auth-handoff`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-App-Id": APP_ID },
+          body: JSON.stringify({ action: "claim", payload: { handoff_id: handoffId } }),
         });
-        const body = res?.data?.data ?? res?.data ?? {};
-        if (body.status === "ready" && body.access_token) {
-          await this.adoptToken(body.access_token);
+        if (!res.ok) throw new ApiError(res.status, "claim_failed");
+        const body: any = await res.json().catch(() => ({}));
+        const data = body?.data ?? {};
+        if (data.status === "ready" && data.access_token) {
+          await this.adoptToken(data.access_token);
           return "ready";
         }
-        return body.status === "expired" ? "expired" : "pending";
+        return data.status === "expired" ? "expired" : "pending";
       },
       async signIn(email: string, password: string): Promise<void> {
         const res: any = await base44.auth.loginViaEmailPassword(email, password);
