@@ -1,6 +1,9 @@
 // Singleton API client with platform-appropriate token storage:
 // SecureStore on iOS/Android, localStorage on web.
 
+// Must be first: installs crypto.getRandomValues before the SDK client (below)
+// or any uuid-using SDK call runs on device. See crypto-polyfill.ts.
+import "./crypto-polyfill";
 import { Platform } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { createApi, type TokenStorage } from "@findmybins/api-client";

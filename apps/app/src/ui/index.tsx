@@ -1,8 +1,8 @@
 // FindMyBins UI kit: friendly, rounded, high-contrast, large touch targets.
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  ActivityIndicator, Keyboard, Platform, Pressable, ScrollView,
   StyleSheet, Text, TextInput, View,
   type StyleProp, type TextInputProps, type ViewStyle,
 } from "react-native";
@@ -18,6 +18,7 @@ export function Screen({ children, scroll = true, padded = true, style }: {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const offsetY = useRef(0);
+  const [kbPad, setKbPad] = useState(0);
   const inner = [
     padded && { padding: spacing.md, paddingBottom: spacing.xl },
     { maxWidth: 720, width: "100%" as const, alignSelf: "center" as const },
@@ -29,23 +30,32 @@ export function Screen({ children, scroll = true, padded = true, style }: {
   );
 
   // Keep the focused input above the keyboard. React Native's ScrollView does
-  // not do this on its own on Android, so when the keyboard slides up it covers
-  // the field being edited. We measure the focused input and scroll it into
-  // view. This is dependency-free (works in Expo Go) and handles both softInput
-  // modes — window-resize (Expo Go's default) and pan — because it scrolls
-  // relative to wherever the keyboard's top edge lands.
+  // NOT do this on its own, and in Expo Go the keyboard overlays the app without
+  // resizing the window — so a form that fits on screen has no room to scroll
+  // and the field stays hidden. Two steps, both required: (1) add bottom padding
+  // equal to the keyboard height so the content becomes scrollable, then (2)
+  // measure the focused field and scroll it above the keyboard's top edge. This
+  // is dependency-free (works in Expo Go) and is correct whether or not the OS
+  // resizes the window.
   useEffect(() => {
     if (!scroll || Platform.OS === "web") return;
-    const sub = Keyboard.addListener("keyboardDidShow", (e) => {
+    const onShow = (e: any) => {
+      setKbPad(e?.endCoordinates?.height ?? 0);
+      const keyboardTop = e?.endCoordinates?.screenY ?? Number.MAX_SAFE_INTEGER;
       const input: any = TextInput.State.currentlyFocusedInput?.();
       if (!input?.measureInWindow || !scrollRef.current) return;
-      const keyboardTop = e?.endCoordinates?.screenY ?? Number.MAX_SAFE_INTEGER;
-      input.measureInWindow((_x: number, y: number, _w: number, h: number) => {
-        const overlap = y + h + spacing.md - keyboardTop;
-        if (overlap > 0) scrollRef.current?.scrollTo({ y: offsetY.current + overlap, animated: true });
-      });
-    });
-    return () => sub.remove();
+      // Wait for the new bottom padding to lay out before scrolling, or there's
+      // still nothing to scroll into.
+      setTimeout(() => {
+        input.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+          const overlap = y + h + spacing.md - keyboardTop;
+          if (overlap > 0) scrollRef.current?.scrollTo({ y: offsetY.current + overlap, animated: true });
+        });
+      }, 60);
+    };
+    const showSub = Keyboard.addListener("keyboardDidShow", onShow);
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => setKbPad(0));
+    return () => { showSub.remove(); hideSub.remove(); };
   }, [scroll]);
 
   if (!scroll) {
@@ -57,15 +67,16 @@ export function Screen({ children, scroll = true, padded = true, style }: {
     );
   }
   return (
-    <KeyboardAvoidingView
-      style={[styles.fill, { backgroundColor: t.bg }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <View style={[styles.fill, { backgroundColor: t.bg }]}>
       {gradient}
       <ScrollView
         ref={scrollRef}
         style={styles.fill}
-        contentContainerStyle={[{ paddingTop: insets.top, flexGrow: 1 }, ...inner]}
+        contentContainerStyle={[
+          { paddingTop: insets.top, flexGrow: 1 },
+          ...inner,
+          { paddingBottom: (padded ? spacing.xl : 0) + kbPad },
+        ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         onScroll={(e) => { offsetY.current = e.nativeEvent.contentOffset.y; }}
@@ -73,7 +84,7 @@ export function Screen({ children, scroll = true, padded = true, style }: {
       >
         {children}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
