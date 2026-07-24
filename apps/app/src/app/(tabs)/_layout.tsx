@@ -41,12 +41,16 @@ export default function TabsLayout() {
         name="scan"
         options={{
           title: "Scan",
+          // No label for the center action; the circular button lifts above the
+          // bar as a FAB-style control. (Per-screen tabBarShowLabel isn't honored
+          // here, so render an empty label instead.)
+          tabBarLabel: () => null,
           tabBarIcon: ({ size }) => (
             <View
               style={{
                 width: size + 26, height: size + 26, borderRadius: (size + 26) / 2,
                 backgroundColor: t.primary, alignItems: "center", justifyContent: "center",
-                marginTop: -14, ...elevation(t).primary,
+                marginTop: -24, ...elevation(t).primary,
               }}
             >
               <Ionicons name="qr-code" size={size + 2} color="#FFFFFF" />

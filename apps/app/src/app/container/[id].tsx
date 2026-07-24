@@ -1,7 +1,7 @@
 // Container detail: header, items with quick add, label + archive actions.
 
 import React, { useCallback, useState } from "react";
-import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,6 +25,9 @@ export default function ContainerDetail() {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [photoBusy, setPhotoBusy] = useState<"adding" | "analyzing" | null>(null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
+  // Which draft is being confirmed/discarded, so its buttons can show progress.
+  const [draftBusy, setDraftBusy] = useState<string | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
   const [newItem, setNewItem] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -144,8 +147,11 @@ export default function ContainerDetail() {
 
   const toggleArchived = async () => {
     if (!workspace) return;
-    await api.containers.setArchived(workspace.id, container.id, !container.archived).catch(() => {});
-    await load();
+    setArchiveBusy(true);
+    try {
+      await api.containers.setArchived(workspace.id, container.id, !container.archived).catch(() => {});
+      await load();
+    } finally { setArchiveBusy(false); }
   };
 
   const printLabel = async () => {
@@ -194,27 +200,22 @@ export default function ContainerDetail() {
         </View>
       )}
 
-      <View style={{ flexDirection: "row", gap: spacing.sm, marginBottom: spacing.sm }}>
-        <View style={{ flex: 1 }}>
-          <Button
-            label={container.label_status === "printed" ? "Reprint label" : "Print label"}
-            icon="print-outline" kind="secondary" onPress={printLabel} loading={busy}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Button
-            label={container.archived ? "Restore" : "Archive"}
-            icon={container.archived ? "refresh-outline" : "archive-outline"}
-            kind="ghost" onPress={toggleArchived}
-          />
-        </View>
-      </View>
+      <Button
+        label={container.label_status === "printed" ? "Reprint label" : "Print label"}
+        icon="print-outline" kind="secondary" onPress={printLabel} loading={busy}
+      />
 
       {!isLocal && sync.online && (
         <>
           <SectionTitle>Photos ({photos.length})</SectionTitle>
           {photos.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.sm }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              // Room for the delete badge, which overhangs each thumbnail by 6px.
+              contentContainerStyle={{ paddingTop: 8, paddingRight: 8 }}
+              style={{ marginBottom: spacing.sm }}
+            >
               {photos.map((p) => (
                 <View key={p.id} style={{ marginRight: spacing.sm }}>
                   <Image
@@ -293,24 +294,42 @@ export default function ContainerDetail() {
                   </Text>
                 </View>
                 <Pressable
+                  disabled={draftBusy != null}
                   onPress={async () => {
-                    if (!workspace) return;
-                    await api.capture.confirmDrafts(workspace.id, [{ item_id: d.id }]).catch(() => {});
-                    await load();
+                    if (!workspace || draftBusy) return;
+                    setDraftBusy(d.id);
+                    try {
+                      await api.capture.confirmDrafts(workspace.id, [{ item_id: d.id }]).catch(() => {});
+                      await load();
+                    } finally { setDraftBusy(null); }
                   }}
-                  style={{ backgroundColor: `${t.accent}22`, borderRadius: radius.sm, padding: 10, marginRight: 6 }}
+                  style={{
+                    backgroundColor: `${t.accent}22`, borderRadius: radius.sm, padding: 10, marginRight: 6,
+                    width: 40, alignItems: "center", opacity: draftBusy && draftBusy !== d.id ? 0.4 : 1,
+                  }}
                 >
-                  <Ionicons name="checkmark" size={18} color={t.accent} />
+                  {draftBusy === d.id
+                    ? <ActivityIndicator size="small" color={t.accent} />
+                    : <Ionicons name="checkmark" size={18} color={t.accent} />}
                 </Pressable>
                 <Pressable
+                  disabled={draftBusy != null}
                   onPress={async () => {
-                    if (!workspace) return;
-                    await api.capture.discardDrafts(workspace.id, [d.id]).catch(() => {});
-                    await load();
+                    if (!workspace || draftBusy) return;
+                    setDraftBusy(d.id);
+                    try {
+                      await api.capture.discardDrafts(workspace.id, [d.id]).catch(() => {});
+                      await load();
+                    } finally { setDraftBusy(null); }
                   }}
-                  style={{ backgroundColor: `${t.danger}18`, borderRadius: radius.sm, padding: 10 }}
+                  style={{
+                    backgroundColor: `${t.danger}18`, borderRadius: radius.sm, padding: 10,
+                    width: 40, alignItems: "center", opacity: draftBusy && draftBusy !== d.id ? 0.4 : 1,
+                  }}
                 >
-                  <Ionicons name="close" size={18} color={t.danger} />
+                  {draftBusy === d.id
+                    ? <ActivityIndicator size="small" color={t.danger} />
+                    : <Ionicons name="close" size={18} color={t.danger} />}
                 </Pressable>
               </View>
             </Card>
@@ -368,6 +387,18 @@ export default function ContainerDetail() {
           </View>
         </Card>
       ))}
+
+      {/* Archive lives at the bottom, out of the way of the primary actions,
+          so it isn't tapped by accident. */}
+      <View style={{ marginTop: spacing.xl }}>
+        <Button
+          label={container.archived ? "Restore container" : "Archive container"}
+          icon={container.archived ? "refresh-outline" : "archive-outline"}
+          kind="ghost"
+          onPress={toggleArchived}
+          loading={archiveBusy}
+        />
+      </View>
     </Screen>
   );
 }

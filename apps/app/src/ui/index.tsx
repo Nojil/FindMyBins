@@ -40,10 +40,14 @@ export function Screen({ children, scroll = true, padded = true, style }: {
   useEffect(() => {
     if (!scroll || Platform.OS === "web") return;
     const onShow = (e: any) => {
+      const input: any = TextInput.State.currentlyFocusedInput?.();
+      // Only react to a real text field being focused. Android fires keyboard
+      // events on unrelated transitions too (e.g. returning from the camera /
+      // image picker); reacting to those left a large stuck bottom padding.
+      if (!input) return;
       setKbPad(e?.endCoordinates?.height ?? 0);
       const keyboardTop = e?.endCoordinates?.screenY ?? Number.MAX_SAFE_INTEGER;
-      const input: any = TextInput.State.currentlyFocusedInput?.();
-      if (!input?.measureInWindow || !scrollRef.current) return;
+      if (!input.measureInWindow || !scrollRef.current) return;
       // Wait for the new bottom padding to lay out before scrolling, or there's
       // still nothing to scroll into.
       setTimeout(() => {
@@ -60,7 +64,7 @@ export function Screen({ children, scroll = true, padded = true, style }: {
 
   if (!scroll) {
     return (
-      <View style={[styles.fill, { backgroundColor: t.bg, paddingTop: insets.top }]}>
+      <View style={[styles.fill, { backgroundColor: t.bg, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {gradient}
         <View style={[styles.fill, ...inner]}>{children}</View>
       </View>
@@ -73,9 +77,11 @@ export function Screen({ children, scroll = true, padded = true, style }: {
         ref={scrollRef}
         style={styles.fill}
         contentContainerStyle={[
-          { paddingTop: insets.top, flexGrow: 1 },
+          { paddingTop: insets.top },
           ...inner,
-          { paddingBottom: (padded ? spacing.xl : 0) + kbPad },
+          // Clear the Android system nav bar / home indicator, and make room
+          // above the keyboard when a field is focused.
+          { paddingBottom: (padded ? spacing.xl : 0) + insets.bottom + kbPad },
         ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"

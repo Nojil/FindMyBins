@@ -163,13 +163,21 @@ export default function NewContainer() {
           <Subtitle>The number is assigned automatically.</Subtitle>
 
           <Text style={{ color: t.textMuted, fontSize: 13, fontWeight: "600", marginBottom: 6 }}>Type</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: spacing.md }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            // alignItems:center keeps a horizontal ScrollView's children from
+            // stretching to its full height (which made the pills tall columns).
+            contentContainerStyle={{ alignItems: "center", paddingVertical: 2 }}
+            style={{ marginBottom: spacing.md }}
+          >
             {CONTAINER_TYPES.map((opt) => (
               <Pressable
                 key={opt.value}
                 onPress={() => setType(opt.value)}
                 style={{
-                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, marginRight: 8,
+                  height: 40, justifyContent: "center",
+                  paddingHorizontal: 16, borderRadius: 999, marginRight: 8,
                   backgroundColor: type === opt.value ? t.primary : t.card,
                   borderWidth: 1, borderColor: type === opt.value ? t.primary : t.border,
                 }}
