@@ -188,6 +188,11 @@ export function createApi(storage: TokenStorage) {
       async hasToken(): Promise<boolean> {
         return !!(await storage.get(TOKEN_KEY));
       },
+      /** The stored session token, for callers that must build their own request
+       *  (e.g. the native file upload, which streams from disk outside the SDK). */
+      async getToken(): Promise<string | null> {
+        return storage.get(TOKEN_KEY);
+      },
       /** Append a timestamped native-OAuth breadcrumb; survives a bundle reload. */
       async noteOAuth(msg: string): Promise<void> {
         try {

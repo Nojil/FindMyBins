@@ -6,6 +6,7 @@
 import { Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import { APP_ID, SERVER_URL } from "@findmybins/core";
 import { api } from "./api";
 import type { MediaInfo } from "@findmybins/api-client";
 
@@ -35,22 +36,46 @@ async function resizeTo(uri: string, width: number): Promise<string> {
 }
 
 async function uploadVariant(uri: string, name: string): Promise<{ file_uri: string; bytes: number }> {
-  let file: unknown;
-  let bytes: number;
   if (Platform.OS === "web") {
+    // Web has a real File, which the SDK's UploadPrivateFile handles correctly.
     const blob = await (await fetch(uri)).blob();
-    bytes = blob.size;
-    file = new File([blob], name, { type: "image/jpeg" });
-  } else {
-    // React Native FormData takes { uri, name, type } descriptors.
-    const blob = await (await fetch(uri)).blob().catch(() => null);
-    bytes = blob?.size ?? 0;
-    file = { uri, name, type: "image/jpeg" };
+    const file = new File([blob], name, { type: "image/jpeg" });
+    const res: any = await api.raw.integrations.Core.UploadPrivateFile({ file });
+    const file_uri = res?.file_uri ?? res?.data?.file_uri;
+    if (typeof file_uri !== "string") throw new Error("upload failed");
+    return { file_uri, bytes: blob.size };
   }
-  const res: any = await api.raw.integrations.Core.UploadPrivateFile({ file: file as File });
-  const file_uri = res?.file_uri ?? res?.data?.file_uri;
-  if (typeof file_uri !== "string") throw new Error("upload failed");
-  return { file_uri, bytes };
+  // Native: stream the file to private storage with expo-file-system's native
+  // multipart upload. This deliberately avoids fetch/FormData. On device the
+  // global fetch is Expo's Winter fetch, which can't read a React Native Blob
+  // (its FileReader has no readAsArrayBuffer) and rejects the legacy
+  // { uri, name, type } descriptor ("Unsupported FormDataPart implementation"),
+  // while the SDK JSON-stringifies that descriptor into a dict the backend
+  // rejects. File.upload() reads the file from disk and sends a real multipart
+  // part (default field name "file", which is what the endpoint expects).
+  const FS = require("expo-file-system");
+  const token = await api.auth.getToken();
+  const f = new FS.File(uri);
+  const result = await f.upload(
+    `${SERVER_URL}/api/apps/${APP_ID}/integration-endpoints/Core/UploadPrivateFile`,
+    {
+      httpMethod: "POST",
+      uploadType: FS.UploadType.MULTIPART,
+      fieldName: "file",
+      mimeType: "image/jpeg",
+      headers: token
+        ? { Authorization: `Bearer ${token}`, "X-App-Id": APP_ID }
+        : { "X-App-Id": APP_ID },
+    },
+  );
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error(`upload ${result.status}: ${String(result.body ?? "").slice(0, 160)}`);
+  }
+  let fileUri: unknown;
+  try { fileUri = JSON.parse(result.body)?.file_uri ?? JSON.parse(result.body)?.data?.file_uri; }
+  catch { /* non-JSON body falls through to the guard below */ }
+  if (typeof fileUri !== "string") throw new Error("upload: no file_uri in response");
+  return { file_uri: fileUri, bytes: typeof f.size === "number" ? f.size : 0 };
 }
 
 /** Full pipeline. Returns the registered media record. */
