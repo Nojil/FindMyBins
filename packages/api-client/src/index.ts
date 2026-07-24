@@ -338,7 +338,7 @@ export function createApi(storage: TokenStorage) {
 
     capture: {
       analyzePhotos: (workspace_id: string, container_id: string, media_ids: string[]) =>
-        invoke<{ session_id: string; status: string; photo_note: string | null; drafts: DraftItem[] }>(
+        invoke<{ session_id: string | null; status: string; photo_note: string | null; drafts: DraftItem[]; nothing_new?: boolean }>(
           "api/capture", "analyze_photos", { workspace_id, container_id, media_ids }),
       listDrafts: (workspace_id: string, container_id?: string) =>
         invoke<{ drafts: DraftItem[] }>("api/capture", "list_drafts", { workspace_id, container_id }),

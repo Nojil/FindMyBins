@@ -59,8 +59,30 @@ serveActions({
     const container = await requireContainer(ctx, payload.container_id, "create_inventory");
     if (container.archived) throw badRequest("Restore the container first");
 
-    const mediaIds = Array.isArray(payload.media_ids) ? payload.media_ids.slice(0, 5) : [];
-    if (!mediaIds.length) throw badRequest("media_ids required");
+    const requested = Array.isArray(payload.media_ids)
+      ? payload.media_ids.filter((x: unknown) => typeof x === "string")
+      : [];
+    if (!requested.length) throw badRequest("media_ids required");
+
+    // Only analyze photos that haven't already been through a successful
+    // analysis for this container. Re-running "Analyze with AI" after adding a
+    // new photo must not re-surface drafts the user already accepted or
+    // dismissed for earlier photos.
+    const priorSessions = await ctx.sr.entities.CaptureSession
+      .filter({ workspace_id: ctx.workspace.id, container_id: container.id })
+      .catch(() => [] as any[]);
+    const analyzed = new Set<string>();
+    for (const s of priorSessions) {
+      if (s.kind === "photo_ai" && s.status === "ready" && Array.isArray(s.media_ids)) {
+        for (const m of s.media_ids) analyzed.add(m);
+      }
+    }
+    const mediaIds = requested.filter((id: string) => !analyzed.has(id)).slice(0, 5);
+    if (!mediaIds.length) {
+      // Everything supplied was already analyzed — no charge, no LLM call.
+      return { session_id: null, status: "ready", photo_note: null, drafts: [], nothing_new: true };
+    }
+
     const fileUrls: string[] = [];
     for (const id of mediaIds) {
       const media = await ctx.sr.entities.MediaAsset.get(id).catch(() => null);

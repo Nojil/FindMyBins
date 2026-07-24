@@ -97,10 +97,13 @@ export default function ContainerDetail() {
     setPhotoBusy("analyzing");
     setPhotoNote(null);
     try {
-      const res = await api.capture.analyzePhotos(workspace.id, container.id, photos.slice(0, 5).map((p) => p.id));
-      setPhotoNote(res.drafts.length
-        ? `Found ${res.drafts.length} item${res.drafts.length === 1 ? "" : "s"} to review below.`
-        : "No recognizable objects in these photos.");
+      // Pass every photo; the server analyzes only the ones not already done.
+      const res = await api.capture.analyzePhotos(workspace.id, container.id, photos.map((p) => p.id));
+      setPhotoNote(res.nothing_new
+        ? "These photos have already been analyzed."
+        : res.drafts.length
+          ? `Found ${res.drafts.length} item${res.drafts.length === 1 ? "" : "s"} to review below.`
+          : "No new items found in the added photos.");
       await load();
     } catch (err) {
       setPhotoNote(err instanceof ApiError && err.code === "ai_trial_exhausted"
