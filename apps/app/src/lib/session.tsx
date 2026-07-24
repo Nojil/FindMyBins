@@ -2,6 +2,7 @@
 // signedOut → (auth) → onboarding (no 18+/terms or no workspace) → ready.
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 import * as Linking from "expo-linking";
 import type { Profile, WorkspaceSummary } from "@findmybins/core";
 import { ApiError } from "@findmybins/api-client";
@@ -88,6 +89,37 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     Linking.getInitialURL().then(adopt).catch(() => {});
     const sub = Linking.addEventListener("url", (e) => { void adopt(e.url); });
     return () => { cancelled = true; sub.remove(); };
+  }, [refresh]);
+
+  /**
+   * Resume a native OAuth sign-in that was interrupted by an app reload. Expo
+   * Go frequently reloads the JS bundle when the app returns from the OAuth
+   * browser, wiping the sign-in screen's in-memory poll. The handoff id is
+   * persisted to storage, so on mount — and whenever the app foregrounds — we
+   * claim the token the relay stored and finish signing in.
+   */
+  useEffect(() => {
+    let running = false;
+    const resume = async () => {
+      if (running) return;
+      running = true;
+      try {
+        const id = await api.auth.getPendingHandoff();
+        if (!id) return;
+        for (let i = 0; i < 12; i++) {
+          let result: "pending" | "ready" | "expired" = "pending";
+          try { result = await api.auth.claimHandoff(id); } catch { /* retry */ }
+          if (result === "ready") { await api.auth.clearPendingHandoff(); await refresh(); return; }
+          if (result === "expired") { await api.auth.clearPendingHandoff(); return; }
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      } finally {
+        running = false;
+      }
+    };
+    resume();
+    const sub = AppState.addEventListener("change", (s) => { if (s === "active") void resume(); });
+    return () => sub.remove();
   }, [refresh]);
 
   const signIn = useCallback(async (email: string, password: string) => {

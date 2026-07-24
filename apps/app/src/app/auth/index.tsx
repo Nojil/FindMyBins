@@ -55,6 +55,7 @@ export default function SignIn() {
     claimedRef.current = true;
     handoffRef.current = null;
     pollRef.current = false;
+    await api.auth.clearPendingHandoff();
     await refresh();
     router.replace("/");
   }, [refresh]);
@@ -105,6 +106,8 @@ export default function SignIn() {
     claimedRef.current = false;
     const handoff = newHandoffId();
     handoffRef.current = handoff; // lets the AppState foreground-claim find it
+    // Persist so the claim can resume if the app reloads on return (Expo Go).
+    await api.auth.savePendingHandoff(handoff);
     const relay = `${WEB_APP_URL}/native-auth.html?handoff=${handoff}`;
 
     const claimToken = async (attempts: number): Promise<boolean> => {

@@ -99,6 +99,7 @@ export interface NaturalSearchResult {
 }
 
 const TOKEN_KEY = "fmb_token";
+const PENDING_HANDOFF_KEY = "fmb_pending_handoff";
 
 export function createApi(storage: TokenStorage) {
   const base44 = createClient({ appId: APP_ID });
@@ -152,6 +153,31 @@ export function createApi(storage: TokenStorage) {
       async adoptToken(token: string): Promise<void> {
         base44.auth.setToken(token, false);
         await storage.set(TOKEN_KEY, token);
+      },
+      /**
+       * Persist the in-flight handoff id so a claim can resume after the app
+       * reloads. In Expo Go the JS bundle is often reloaded when the app
+       * returns from the OAuth browser, wiping in-memory state — without this,
+       * the stored token can never be claimed.
+       */
+      async savePendingHandoff(id: string): Promise<void> {
+        await storage.set(PENDING_HANDOFF_KEY, `${Date.now()}:${id}`);
+      },
+      /** The pending handoff id if one was saved in the last 3 minutes. */
+      async getPendingHandoff(): Promise<string | null> {
+        const raw = await storage.get(PENDING_HANDOFF_KEY);
+        if (!raw) return null;
+        const sep = raw.indexOf(":");
+        const at = Number(raw.slice(0, sep));
+        const id = raw.slice(sep + 1);
+        if (!id || !Number.isFinite(at) || Date.now() - at > 180_000) {
+          await storage.remove(PENDING_HANDOFF_KEY);
+          return null;
+        }
+        return id;
+      },
+      async clearPendingHandoff(): Promise<void> {
+        await storage.remove(PENDING_HANDOFF_KEY);
       },
       /**
        * Claim a token the browser stored under `handoffId` after native OAuth.
