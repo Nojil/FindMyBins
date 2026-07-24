@@ -43,9 +43,23 @@ export default function SignIn() {
   const [busy, setBusy] = useState(false);
   const [social, setSocial] = useState<OAuthProvider | null>(null);
   // On-screen trace of the native OAuth steps, so a failure is legible on the
-  // device without watching the Metro terminal.
+  // device without watching the Metro terminal. Lines are also persisted (via
+  // noteOAuth) so the trace survives Expo Go reloading the bundle on return from
+  // the browser — and so the headless resume in SessionProvider shows up here.
   const [trace, setTrace] = useState<string[]>([]);
-  const log = (line: string) => setTrace((prev) => [...prev.slice(-6), line]);
+  const log = (line: string) => {
+    setTrace((prev) => [...prev.slice(-6), line]);
+    void api.auth.noteOAuth(line);
+  };
+
+  // After a reload mid-sign-in, replay whatever the persisted log holds so the
+  // login screen shows what happened (including the SessionProvider resume).
+  useEffect(() => {
+    (async () => {
+      const persisted = await api.auth.readOAuthLog();
+      if (persisted.length) setTrace(persisted.slice(-7));
+    })();
+  }, []);
   const pollRef = useRef(false);
   const handoffRef = useRef<string | null>(null);
   const claimedRef = useRef(false);
@@ -103,6 +117,7 @@ export default function SignIn() {
 
     setSocial(provider);
     setTrace([]);
+    await api.auth.clearOAuthLog();
     claimedRef.current = false;
     const handoff = newHandoffId();
     handoffRef.current = handoff; // lets the AppState foreground-claim find it

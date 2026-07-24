@@ -33,23 +33,39 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    try {
-      const boot = await api.workspaces.bootstrap();
-      setProfile(boot.profile);
-      setWorkspaces(boot.workspaces);
-      const stored = await storage.get(WS_KEY);
-      const validStored = boot.workspaces.find((w) => w.id === stored)?.id;
-      const current = validStored ?? boot.workspaces[0]?.id ?? null;
-      setWorkspaceId(current);
-      const onboarded = boot.profile.is_18_or_over && boot.profile.terms_accepted_at && boot.workspaces.length > 0;
-      setStatus(onboarded ? "ready" : "onboarding");
-    } catch (err) {
-      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-        setStatus("signedOut");
-      } else {
-        // Network/server problem with a stored token: keep the user signed in
-        // but surface nothing to render yet; screens show their own errors.
-        setStatus("signedOut");
+    // Retry across transient network failures. This matters most right after a
+    // native OAuth claim: the token is valid and stored, but Expo Go's reload
+    // storm ("Cannot connect to Expo CLI") can make the first bootstrap fail —
+    // and dropping straight to signedOut there throws away a good sign-in.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const boot = await api.workspaces.bootstrap();
+        setProfile(boot.profile);
+        setWorkspaces(boot.workspaces);
+        const stored = await storage.get(WS_KEY);
+        const validStored = boot.workspaces.find((w) => w.id === stored)?.id;
+        const current = validStored ?? boot.workspaces[0]?.id ?? null;
+        setWorkspaceId(current);
+        const onboarded = boot.profile.is_18_or_over && boot.profile.terms_accepted_at && boot.workspaces.length > 0;
+        setStatus(onboarded ? "ready" : "onboarding");
+        return;
+      } catch (err) {
+        // A real auth rejection is definitive — the token is no good.
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          await api.auth.noteOAuth(`bootstrap ${err.status} — signed out`);
+          setStatus("signedOut");
+          return;
+        }
+        // Otherwise it's a network/server hiccup. With no token there's nothing
+        // to wait for; with one, keep a valid session alive and retry.
+        if (!(await api.auth.hasToken())) { setStatus("signedOut"); return; }
+        if (attempt >= 4) {
+          await api.auth.noteOAuth("bootstrap failed x5 — signed out");
+          setStatus("signedOut");
+          return;
+        }
+        setStatus((s) => (s === "ready" || s === "onboarding" ? s : "loading"));
+        await new Promise((r) => setTimeout(r, 1500));
       }
     }
   }, []);
@@ -106,13 +122,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       try {
         const id = await api.auth.getPendingHandoff();
         if (!id) return;
+        await api.auth.noteOAuth(`resume: pending ${id.slice(0, 6)}…`);
         for (let i = 0; i < 12; i++) {
           let result: "pending" | "ready" | "expired" = "pending";
-          try { result = await api.auth.claimHandoff(id); } catch { /* retry */ }
-          if (result === "ready") { await api.auth.clearPendingHandoff(); await refresh(); return; }
-          if (result === "expired") { await api.auth.clearPendingHandoff(); return; }
+          try { result = await api.auth.claimHandoff(id); }
+          catch (e: any) { await api.auth.noteOAuth(`resume: claim err ${e?.status ?? "?"}`); }
+          if (result === "ready") {
+            await api.auth.noteOAuth("resume: claimed ✓");
+            await api.auth.clearPendingHandoff();
+            await refresh();
+            await api.auth.noteOAuth("resume: bootstrap done");
+            return;
+          }
+          if (result === "expired") { await api.auth.noteOAuth("resume: expired"); await api.auth.clearPendingHandoff(); return; }
           await new Promise((r) => setTimeout(r, 1500));
         }
+        await api.auth.noteOAuth("resume: gave up (pending)");
       } finally {
         running = false;
       }

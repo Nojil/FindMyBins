@@ -1,8 +1,9 @@
 // FindMyBins UI kit: friendly, rounded, high-contrast, large touch targets.
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView,
+  StyleSheet, Text, TextInput, View,
   type StyleProp, type TextInputProps, type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +16,8 @@ export function Screen({ children, scroll = true, padded = true, style }: {
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
+  const offsetY = useRef(0);
   const inner = [
     padded && { padding: spacing.md, paddingBottom: spacing.xl },
     { maxWidth: 720, width: "100%" as const, alignSelf: "center" as const },
@@ -24,6 +27,27 @@ export function Screen({ children, scroll = true, padded = true, style }: {
   const gradient = (
     <LinearGradient colors={[...t.bgGradient]} style={StyleSheet.absoluteFill} />
   );
+
+  // Keep the focused input above the keyboard. React Native's ScrollView does
+  // not do this on its own on Android, so when the keyboard slides up it covers
+  // the field being edited. We measure the focused input and scroll it into
+  // view. This is dependency-free (works in Expo Go) and handles both softInput
+  // modes — window-resize (Expo Go's default) and pan — because it scrolls
+  // relative to wherever the keyboard's top edge lands.
+  useEffect(() => {
+    if (!scroll || Platform.OS === "web") return;
+    const sub = Keyboard.addListener("keyboardDidShow", (e) => {
+      const input: any = TextInput.State.currentlyFocusedInput?.();
+      if (!input?.measureInWindow || !scrollRef.current) return;
+      const keyboardTop = e?.endCoordinates?.screenY ?? Number.MAX_SAFE_INTEGER;
+      input.measureInWindow((_x: number, y: number, _w: number, h: number) => {
+        const overlap = y + h + spacing.md - keyboardTop;
+        if (overlap > 0) scrollRef.current?.scrollTo({ y: offsetY.current + overlap, animated: true });
+      });
+    });
+    return () => sub.remove();
+  }, [scroll]);
+
   if (!scroll) {
     return (
       <View style={[styles.fill, { backgroundColor: t.bg, paddingTop: insets.top }]}>
@@ -33,16 +57,23 @@ export function Screen({ children, scroll = true, padded = true, style }: {
     );
   }
   return (
-    <View style={[styles.fill, { backgroundColor: t.bg }]}>
+    <KeyboardAvoidingView
+      style={[styles.fill, { backgroundColor: t.bg }]}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       {gradient}
       <ScrollView
+        ref={scrollRef}
         style={styles.fill}
-        contentContainerStyle={[{ paddingTop: insets.top }, ...inner]}
+        contentContainerStyle={[{ paddingTop: insets.top, flexGrow: 1 }, ...inner]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        onScroll={(e) => { offsetY.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
       >
         {children}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

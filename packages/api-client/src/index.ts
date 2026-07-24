@@ -100,6 +100,11 @@ export interface NaturalSearchResult {
 
 const TOKEN_KEY = "fmb_token";
 const PENDING_HANDOFF_KEY = "fmb_pending_handoff";
+// A tiny persistent breadcrumb trail for native OAuth. Because Expo Go reloads
+// the JS bundle when the app returns from the browser, an in-memory log is lost;
+// this survives the reload so the sign-in screen can show what the (headless)
+// resume in SessionProvider actually did.
+const OAUTH_LOG_KEY = "fmb_oauth_log";
 
 export function createApi(storage: TokenStorage) {
   const base44 = createClient({ appId: APP_ID });
@@ -178,6 +183,28 @@ export function createApi(storage: TokenStorage) {
       },
       async clearPendingHandoff(): Promise<void> {
         await storage.remove(PENDING_HANDOFF_KEY);
+      },
+      /** True if a session token is stored (independent of whether it still works). */
+      async hasToken(): Promise<boolean> {
+        return !!(await storage.get(TOKEN_KEY));
+      },
+      /** Append a timestamped native-OAuth breadcrumb; survives a bundle reload. */
+      async noteOAuth(msg: string): Promise<void> {
+        try {
+          const raw = await storage.get(OAUTH_LOG_KEY);
+          const arr: string[] = raw ? JSON.parse(raw) : [];
+          arr.push(`${new Date().toISOString().slice(11, 19)} ${msg}`.slice(0, 80));
+          await storage.set(OAUTH_LOG_KEY, JSON.stringify(arr.slice(-8)));
+        } catch { /* logging is best-effort */ }
+      },
+      async readOAuthLog(): Promise<string[]> {
+        try {
+          const raw = await storage.get(OAUTH_LOG_KEY);
+          return raw ? JSON.parse(raw) : [];
+        } catch { return []; }
+      },
+      async clearOAuthLog(): Promise<void> {
+        await storage.remove(OAUTH_LOG_KEY);
       },
       /**
        * Claim a token the browser stored under `handoffId` after native OAuth.
